@@ -1,11 +1,11 @@
-// Route protection for /(app) section. Real NextAuth integration is wired in Phase 2.
-// For now this is a no-op so the dev server starts without crashing.
-import { NextResponse } from "next/server";
+import NextAuth from "next-auth";
+import authConfig from "@/lib/auth.config";
 
-export function middleware() {
-  return NextResponse.next();
-}
+export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/projects/:path*", "/settings/:path*"],
+  matcher: [
+    // Run on everything except static assets and Next internals.
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };
