@@ -1,22 +1,44 @@
-import { auth } from "@/lib/auth";
+import { listProjectsForUser, requireUser } from "@/lib/projects";
+import { NewProjectCard, ProjectCard } from "@/components/projects/project-card";
+import { EmptyProjectsState } from "@/components/projects/empty-state";
 
 export const metadata = {
   title: "Dashboard — SEO Dashboard",
 };
 
 export default async function DashboardPage() {
-  const session = await auth();
-  const name = session?.user?.name ?? session?.user?.email ?? "there";
+  const user = await requireUser();
+  const projects = await listProjectsForUser(user.id);
+
+  if (projects.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            All your client projects in one place.
+          </p>
+        </div>
+        <EmptyProjectsState />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome back, {name}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Your projects will appear here. Phase 3 wires up the projects overview.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            All your client projects in one place.
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {projects.map((project) => (
+          <ProjectCard key={project.id} project={project} />
+        ))}
+        <NewProjectCard />
       </div>
     </div>
   );
