@@ -16,6 +16,11 @@ export const authConfig = {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      // Auto-link a Google account to an existing credentials user when the
+      // emails match. Trade-off: trusts Google's email verification. Acceptable
+      // here because credentials users are created by their own password
+      // (they already proved email ownership at registration).
+      allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
           access_type: "offline",

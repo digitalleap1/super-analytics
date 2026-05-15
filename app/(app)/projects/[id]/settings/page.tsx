@@ -2,8 +2,10 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
 import { requireProject } from "@/lib/projects";
+import { prisma } from "@/lib/prisma";
 import { EditProjectForm } from "@/components/projects/edit-project-form";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
+import { DataSourcesForm } from "@/components/projects/data-sources-form";
 import { Separator } from "@/components/ui/separator";
 
 export async function generateMetadata({
@@ -20,7 +22,12 @@ export default async function ProjectSettingsPage({
 }: {
   params: { id: string };
 }) {
-  const { project } = await requireProject(params.id);
+  const { user, project } = await requireProject(params.id);
+
+  const googleAccount = await prisma.account.findFirst({
+    where: { userId: user.id, provider: "google" },
+    select: { id: true },
+  });
 
   return (
     <div className="space-y-8">
@@ -53,9 +60,23 @@ export default async function ProjectSettingsPage({
         <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
           Data sources
         </h2>
-        <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-          Reconnect Search Console and Google Analytics in Phase 4.
-        </div>
+        {googleAccount ? (
+          <DataSourcesForm
+            projectId={project.id}
+            initial={{
+              gscSiteUrl: project.gscSiteUrl,
+              ga4PropertyId: project.ga4PropertyId,
+            }}
+          />
+        ) : (
+          <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+            Connect your Google account in{" "}
+            <a href="/settings" className="text-primary hover:underline">
+              account settings
+            </a>{" "}
+            to pick a Search Console site and GA4 property.
+          </div>
+        )}
       </section>
 
       <Separator />
