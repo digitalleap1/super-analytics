@@ -3,6 +3,21 @@ import { ExternalLink, Settings } from "lucide-react";
 
 import { requireProject } from "@/lib/projects";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { DateRangePicker } from "@/components/reports/date-range-picker";
+import { KpiCard } from "@/components/reports/kpi-card";
+import { ClicksImpressionsChart } from "@/components/charts/clicks-impressions-chart";
+import { PositionTrendChart } from "@/components/charts/position-trend-chart";
+import { ReportTables } from "@/components/reports/report-tables";
+import {
+  parseRangeFromSearchParams,
+  previousPeriod,
+  ymd,
+} from "@/lib/date-ranges";
+import { withCache } from "@/lib/cache";
+import { getGa4Channels, getGa4Overview } from "@/lib/google/ga4";
+import { getGscOverview, getGscPages, getGscQueries } from "@/lib/google/gsc";
+import { formatNumber } from "@/lib/utils";
 
 export async function generateMetadata({
   params,
@@ -15,10 +30,91 @@ export async function generateMetadata({
 
 export default async function ProjectPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams: { [k: string]: string | string[] | undefined };
 }) {
-  const { project } = await requireProject(params.id);
+  const { user, project } = await requireProject(params.id);
+  const { range, compare } = parseRangeFromSearchParams(searchParams);
+  const prev = compare ? previousPeriod(range) : null;
+
+  const baseOpts = {
+    userId: user.id,
+    projectId: project.id,
+    siteUrl: project.gscSiteUrl,
+    from: range.from,
+    to: range.to,
+  };
+
+  const cacheKey = (suffix: string) => ({
+    from: ymd(range.from),
+    to: ymd(range.to),
+    suffix,
+  });
+
+  const [overview, queries, pages, ga4Overview, ga4Channels] = await Promise.all([
+    withCache(project.id, "gsc_overview", cacheKey("current"), () =>
+      getGscOverview(baseOpts),
+    ),
+    withCache(project.id, "gsc_queries", cacheKey("current"), () =>
+      getGscQueries(baseOpts),
+    ),
+    withCache(project.id, "gsc_pages", cacheKey("current"), () =>
+      getGscPages({ ...baseOpts, domain: project.domain }),
+    ),
+    withCache(project.id, "ga4_overview", cacheKey("current"), () =>
+      getGa4Overview({
+        userId: user.id,
+        projectId: project.id,
+        propertyId: project.ga4PropertyId,
+        from: range.from,
+        to: range.to,
+      }),
+    ),
+    withCache(project.id, "ga4_channels", cacheKey("current"), () =>
+      getGa4Channels({
+        userId: user.id,
+        projectId: project.id,
+        propertyId: project.ga4PropertyId,
+        from: range.from,
+        to: range.to,
+      }),
+    ),
+  ]);
+
+  const prevOverview = prev
+    ? await withCache(
+        project.id,
+        "gsc_overview",
+        { from: ymd(prev.from), to: ymd(prev.to), suffix: "prev" },
+        () =>
+          getGscOverview({
+            ...baseOpts,
+            from: prev.from,
+            to: prev.to,
+          }),
+      )
+    : null;
+
+  const prevGa4 = prev
+    ? await withCache(
+        project.id,
+        "ga4_overview",
+        { from: ymd(prev.from), to: ymd(prev.to), suffix: "prev" },
+        () =>
+          getGa4Overview({
+            userId: user.id,
+            projectId: project.id,
+            propertyId: project.ga4PropertyId,
+            from: prev.from,
+            to: prev.to,
+          }),
+      )
+    : null;
+
+  const isStub =
+    overview.source === "stub" || ga4Overview.source === "stub";
 
   return (
     <div className="space-y-6">
@@ -37,61 +133,80 @@ export default async function ProjectPage({
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href={`/projects/${project.id}/settings`}>
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </Link>
-        </Button>
-      </div>
-
-      <div className="rounded-lg border border-dashed bg-card/40 p-10 text-center">
-        <p className="text-sm text-muted-foreground">
-          Reports load here after you connect Google in Phase 4 and KPIs/charts
-          are wired in Phase 5.
-        </p>
-        <div className="mt-4 flex justify-center gap-3">
+        <div className="flex items-center gap-2">
+          <DateRangePicker />
           <Button asChild variant="outline" size="sm">
-            <Link href={`/projects/${project.id}/keywords`}>
-              Keywords (Phase 6)
+            <Link href={`/projects/${project.id}/settings`}>
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
             </Link>
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <ConnectionPill
-          label="Search Console"
-          value={project.gscSiteUrl}
-          empty="Not connected"
+      {isStub ? (
+        <Card className="border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+          Showing <strong>sample data</strong> — connect this project to
+          Google Search Console and Analytics in project settings (or set
+          Google OAuth credentials in <code>.env</code>) to load live numbers.
+        </Card>
+      ) : null}
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <KpiCard
+          label="Clicks"
+          value={formatNumber(overview.totals.clicks)}
+          current={overview.totals.clicks}
+          previous={prevOverview?.totals.clicks}
         />
-        <ConnectionPill
-          label="Google Analytics 4"
-          value={project.ga4PropertyId}
-          empty="Not connected"
+        <KpiCard
+          label="Impressions"
+          value={formatNumber(overview.totals.impressions)}
+          current={overview.totals.impressions}
+          previous={prevOverview?.totals.impressions}
+        />
+        <KpiCard
+          label="Avg position"
+          value={overview.totals.position.toFixed(1)}
+          current={overview.totals.position}
+          previous={prevOverview?.totals.position}
+          invertDelta
+        />
+        <KpiCard
+          label="Users"
+          value={formatNumber(ga4Overview.totals.totalUsers)}
+          current={ga4Overview.totals.totalUsers}
+          previous={prevGa4?.totals.totalUsers}
         />
       </div>
-    </div>
-  );
-}
 
-function ConnectionPill({
-  label,
-  value,
-  empty,
-}: {
-  label: string;
-  value: string | null;
-  empty: string;
-}) {
-  return (
-    <div className="rounded-lg border bg-card p-4">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className={`mt-1 text-sm ${value ? "" : "text-muted-foreground"}`}>
-        {value ?? empty}
-      </p>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="p-5">
+          <h3 className="text-sm font-medium">Clicks &amp; impressions</h3>
+          <p className="text-xs text-muted-foreground">
+            Daily totals across the selected range.
+          </p>
+          <div className="mt-4">
+            <ClicksImpressionsChart data={overview.series} />
+          </div>
+        </Card>
+        <Card className="p-5">
+          <h3 className="text-sm font-medium">Position trend</h3>
+          <p className="text-xs text-muted-foreground">
+            Average position — lower is better.
+          </p>
+          <div className="mt-4">
+            <PositionTrendChart data={overview.series} />
+          </div>
+        </Card>
+      </div>
+
+      <ReportTables
+        projectName={project.name}
+        queries={queries.rows}
+        pages={pages.rows}
+        channels={ga4Channels.rows}
+      />
     </div>
   );
 }
