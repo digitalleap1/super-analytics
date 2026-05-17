@@ -49,6 +49,9 @@ export async function PATCH(
       ...(parsed.data.ga4PropertyId !== undefined && {
         ga4PropertyId: parsed.data.ga4PropertyId,
       }),
+      ...(parsed.data.templateId !== undefined && {
+        templateId: parsed.data.templateId,
+      }),
     },
   });
 

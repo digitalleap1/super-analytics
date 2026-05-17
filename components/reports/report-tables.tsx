@@ -18,9 +18,30 @@ type Props = {
   queries: GscQueryRow[];
   pages: GscPageRow[];
   channels: Ga4ChannelRow[];
+  showQueries?: boolean;
+  showPages?: boolean;
+  showChannels?: boolean;
+  rowLimit?: number;
 };
 
-export function ReportTables({ projectName, queries, pages, channels }: Props) {
+export function ReportTables({
+  projectName,
+  queries,
+  pages,
+  channels,
+  showQueries = true,
+  showPages = true,
+  showChannels = true,
+  rowLimit = 50,
+}: Props) {
+  // Pick the first visible tab as the default.
+  const defaultTab = showQueries
+    ? "queries"
+    : showPages
+      ? "pages"
+      : showChannels
+        ? "channels"
+        : "queries";
   const queryColumns = useMemo<ColumnDef<GscQueryRow, unknown>[]>(
     () => [
       { accessorKey: "query", header: "Query" },
@@ -129,79 +150,89 @@ export function ReportTables({ projectName, queries, pages, channels }: Props) {
   );
 
   return (
-    <Tabs defaultValue="queries" className="space-y-2">
+    <Tabs defaultValue={defaultTab} className="space-y-2">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <TabsList>
-          <TabsTrigger value="queries">Top queries</TabsTrigger>
-          <TabsTrigger value="pages">Top pages</TabsTrigger>
-          <TabsTrigger value="channels">GA4 channels</TabsTrigger>
+          {showQueries ? (
+            <TabsTrigger value="queries">Top queries</TabsTrigger>
+          ) : null}
+          {showPages ? <TabsTrigger value="pages">Top pages</TabsTrigger> : null}
+          {showChannels ? (
+            <TabsTrigger value="channels">GA4 channels</TabsTrigger>
+          ) : null}
         </TabsList>
       </div>
-      <TabsContent value="queries" className="space-y-2">
-        <div className="flex justify-end">
-          <CsvExportButton
-            filename={`${projectName}-queries`}
-            rows={queries as unknown as Record<string, unknown>[]}
-            columns={[
-              { key: "query", header: "Query" },
-              { key: "clicks", header: "Clicks" },
-              { key: "impressions", header: "Impressions" },
-              { key: "ctr", header: "CTR" },
-              { key: "position", header: "Avg Position" },
-            ]}
+      {showQueries ? (
+        <TabsContent value="queries" className="space-y-2">
+          <div className="flex justify-end">
+            <CsvExportButton
+              filename={`${projectName}-queries`}
+              rows={queries as unknown as Record<string, unknown>[]}
+              columns={[
+                { key: "query", header: "Query" },
+                { key: "clicks", header: "Clicks" },
+                { key: "impressions", header: "Impressions" },
+                { key: "ctr", header: "CTR" },
+                { key: "position", header: "Avg Position" },
+              ]}
+            />
+          </div>
+          <SortableTable
+            columns={queryColumns}
+            data={queries.slice(0, rowLimit)}
+            pageSize={Math.min(10, rowLimit)}
+            emptyMessage="No queries in this range yet"
           />
-        </div>
-        <SortableTable
-          columns={queryColumns}
-          data={queries.slice(0, 50)}
-          pageSize={10}
-          emptyMessage="No queries in this range yet"
-        />
-      </TabsContent>
-      <TabsContent value="pages" className="space-y-2">
-        <div className="flex justify-end">
-          <CsvExportButton
-            filename={`${projectName}-pages`}
-            rows={pages as unknown as Record<string, unknown>[]}
-            columns={[
-              { key: "page", header: "Page" },
-              { key: "clicks", header: "Clicks" },
-              { key: "impressions", header: "Impressions" },
-              { key: "ctr", header: "CTR" },
-              { key: "position", header: "Avg Position" },
-            ]}
+        </TabsContent>
+      ) : null}
+      {showPages ? (
+        <TabsContent value="pages" className="space-y-2">
+          <div className="flex justify-end">
+            <CsvExportButton
+              filename={`${projectName}-pages`}
+              rows={pages as unknown as Record<string, unknown>[]}
+              columns={[
+                { key: "page", header: "Page" },
+                { key: "clicks", header: "Clicks" },
+                { key: "impressions", header: "Impressions" },
+                { key: "ctr", header: "CTR" },
+                { key: "position", header: "Avg Position" },
+              ]}
+            />
+          </div>
+          <SortableTable
+            columns={pageColumns}
+            data={pages.slice(0, rowLimit)}
+            pageSize={Math.min(10, rowLimit)}
+            emptyMessage="No pages in this range yet"
           />
-        </div>
-        <SortableTable
-          columns={pageColumns}
-          data={pages.slice(0, 50)}
-          pageSize={10}
-          emptyMessage="No pages in this range yet"
-        />
-      </TabsContent>
-      <TabsContent value="channels" className="space-y-2">
-        <div className="flex justify-end">
-          <CsvExportButton
-            filename={`${projectName}-channels`}
-            rows={channels as unknown as Record<string, unknown>[]}
-            columns={[
-              { key: "channel", header: "Channel" },
-              { key: "sessions", header: "Sessions" },
-              { key: "totalUsers", header: "Users" },
-              { key: "engagementRate", header: "Engagement" },
-              { key: "keyEvents", header: "Key events" },
-              { key: "eventCount", header: "Events" },
-              { key: "conversions", header: "Conversions" },
-            ]}
+        </TabsContent>
+      ) : null}
+      {showChannels ? (
+        <TabsContent value="channels" className="space-y-2">
+          <div className="flex justify-end">
+            <CsvExportButton
+              filename={`${projectName}-channels`}
+              rows={channels as unknown as Record<string, unknown>[]}
+              columns={[
+                { key: "channel", header: "Channel" },
+                { key: "sessions", header: "Sessions" },
+                { key: "totalUsers", header: "Users" },
+                { key: "engagementRate", header: "Engagement" },
+                { key: "keyEvents", header: "Key events" },
+                { key: "eventCount", header: "Events" },
+                { key: "conversions", header: "Conversions" },
+              ]}
+            />
+          </div>
+          <SortableTable
+            columns={channelColumns}
+            data={channels.slice(0, rowLimit)}
+            pageSize={Math.min(10, rowLimit)}
+            emptyMessage="No GA4 data in this range"
           />
-        </div>
-        <SortableTable
-          columns={channelColumns}
-          data={channels}
-          pageSize={10}
-          emptyMessage="No GA4 data in this range"
-        />
-      </TabsContent>
+        </TabsContent>
+      ) : null}
     </Tabs>
   );
 }

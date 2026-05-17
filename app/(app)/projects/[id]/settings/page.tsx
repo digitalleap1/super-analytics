@@ -3,9 +3,11 @@ import { ChevronLeft } from "lucide-react";
 
 import { requireProject } from "@/lib/projects";
 import { prisma } from "@/lib/prisma";
+import { ensureWorkspaceDefaultTemplate } from "@/lib/templates";
 import { EditProjectForm } from "@/components/projects/edit-project-form";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
 import { DataSourcesForm } from "@/components/projects/data-sources-form";
+import { ProjectTemplatePicker } from "@/components/projects/project-template-picker";
 import { Separator } from "@/components/ui/separator";
 
 export async function generateMetadata({
@@ -22,11 +24,18 @@ export default async function ProjectSettingsPage({
 }: {
   params: { id: string };
 }) {
-  const { user, project } = await requireProject(params.id);
+  const { user, workspace, project } = await requireProject(params.id);
 
   const googleAccount = await prisma.account.findFirst({
     where: { userId: user.id, provider: "google" },
     select: { id: true },
+  });
+
+  await ensureWorkspaceDefaultTemplate(workspace.id);
+  const templates = await prisma.reportTemplate.findMany({
+    where: { workspaceId: workspace.id },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+    select: { id: true, name: true, isDefault: true },
   });
 
   return (
@@ -77,6 +86,19 @@ export default async function ProjectSettingsPage({
             to pick a Search Console site and GA4 property.
           </div>
         )}
+      </section>
+
+      <Separator />
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          Report template
+        </h2>
+        <ProjectTemplatePicker
+          projectId={project.id}
+          currentTemplateId={project.templateId}
+          templates={templates}
+        />
       </section>
 
       <Separator />

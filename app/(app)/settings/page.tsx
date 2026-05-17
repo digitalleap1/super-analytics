@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Users } from "lucide-react";
+import { ArrowRight, FileText, Users } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -31,6 +31,9 @@ export default async function SettingsPage({
   const workspace = await getCurrentWorkspaceForUser(session.user.id);
   const memberCount = workspace
     ? await prisma.membership.count({ where: { workspaceId: workspace.id } })
+    : 0;
+  const templateCount = workspace
+    ? await prisma.reportTemplate.count({ where: { workspaceId: workspace.id } })
     : 0;
 
   return (
@@ -106,6 +109,24 @@ export default async function SettingsPage({
                   {memberCount} member{memberCount === 1 ? "" : "s"} ·{" "}
                   <span className="capitalize">{workspace.role}</span> · Click
                   to manage members + invites
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          </Link>
+          <Link
+            href="/settings/templates"
+            className="group flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <FileText className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Report templates</p>
+                <p className="text-xs text-muted-foreground">
+                  {templateCount} template{templateCount === 1 ? "" : "s"} ·
+                  Customize layouts and apply them to projects
                 </p>
               </div>
             </div>

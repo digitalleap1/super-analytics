@@ -56,6 +56,22 @@ model Workspace {
   memberships Membership[]
   projects    Project[]
   invites     WorkspaceInvite[]
+  templates   ReportTemplate[]
+}
+
+model ReportTemplate {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  isDefault   Boolean   @default(false)
+  config      String // JSON-encoded ReportTemplateConfig (see lib/templates.ts)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projects    Project[]
+
+  @@index([workspaceId])
 }
 
 model Membership {
@@ -84,16 +100,18 @@ model WorkspaceInvite {
 }
 
 model Project {
-  id            String        @id @default(cuid())
+  id            String          @id @default(cuid())
   workspaceId   String
+  templateId    String?
   name          String
   domain        String
   logoUrl       String?
   gscSiteUrl    String?
   ga4PropertyId String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  workspace     Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  template      ReportTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   keywords      Keyword[]
   reports       ReportCache[]
 }
