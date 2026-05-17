@@ -10,7 +10,7 @@ type SidebarProps = {
 
 export function Sidebar({ user }: SidebarProps) {
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r bg-card md:flex">
+    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r bg-card md:flex">
       <div className="flex h-16 items-center px-6">
         <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
           <BarChart3 className="h-5 w-5 text-primary" />
