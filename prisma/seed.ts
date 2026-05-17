@@ -5,6 +5,7 @@ const prisma = new PrismaClient();
 
 const DEMO_EMAIL = "demo@seo-dashboard.local";
 const DEMO_PASSWORD = "demo1234";
+const WORKSPACE_SLUG = "demo-workspace";
 
 async function main() {
   console.log("🌱 Seeding demo data...");
@@ -21,14 +22,35 @@ async function main() {
   });
   console.log(`  ✓ User: ${user.email}`);
 
+  const workspace = await prisma.workspace.upsert({
+    where: { slug: WORKSPACE_SLUG },
+    update: { name: "Demo Workspace" },
+    create: {
+      name: "Demo Workspace",
+      slug: WORKSPACE_SLUG,
+      memberships: {
+        create: { userId: user.id, role: "owner" },
+      },
+    },
+  });
+  // If the workspace already exists but the user lacks membership, add it.
+  await prisma.membership.upsert({
+    where: {
+      userId_workspaceId: { userId: user.id, workspaceId: workspace.id },
+    },
+    update: {},
+    create: { userId: user.id, workspaceId: workspace.id, role: "owner" },
+  });
+  console.log(`  ✓ Workspace: ${workspace.name} (${workspace.slug})`);
+
   // Wipe existing demo project so re-seeding stays clean.
   await prisma.project.deleteMany({
-    where: { userId: user.id, domain: "acme-demo.com" },
+    where: { workspaceId: workspace.id, domain: "acme-demo.com" },
   });
 
   const project = await prisma.project.create({
     data: {
-      userId: user.id,
+      workspaceId: workspace.id,
       name: "Acme Demo Co",
       domain: "acme-demo.com",
     },

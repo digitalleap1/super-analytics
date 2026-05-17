@@ -1,8 +1,12 @@
+import Link from "next/link";
+import { ArrowRight, Users } from "lucide-react";
+
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { GoogleConnect } from "@/components/settings/google-connect";
+import { getCurrentWorkspaceForUser } from "@/lib/workspaces";
 
 export const metadata = {
   title: "Settings — SEO Dashboard",
@@ -23,6 +27,11 @@ export default async function SettingsPage({
 
   const connectedEmail = googleAccount ? session.user.email ?? null : null;
   const justConnected = searchParams.google === "connected";
+
+  const workspace = await getCurrentWorkspaceForUser(session.user.id);
+  const memberCount = workspace
+    ? await prisma.membership.count({ where: { workspaceId: workspace.id } })
+    : 0;
 
   return (
     <div className="space-y-8">
@@ -75,6 +84,35 @@ export default async function SettingsPage({
           </p>
         ) : null}
       </section>
+
+      <Separator />
+
+      {workspace ? (
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            Workspace
+          </h2>
+          <Link
+            href="/settings/workspace"
+            className="group flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <Users className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">{workspace.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {memberCount} member{memberCount === 1 ? "" : "s"} ·{" "}
+                  <span className="capitalize">{workspace.role}</span> · Click
+                  to manage members + invites
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </section>
+      ) : null}
     </div>
   );
 }

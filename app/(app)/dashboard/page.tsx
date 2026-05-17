@@ -1,4 +1,4 @@
-import { listProjectsForUser, requireUser } from "@/lib/projects";
+import { listProjectsForWorkspace, requireWorkspace } from "@/lib/projects";
 import { NewProjectCard, ProjectCard } from "@/components/projects/project-card";
 import { EmptyProjectsState } from "@/components/projects/empty-state";
 
@@ -7,8 +7,8 @@ export const metadata = {
 };
 
 export default async function DashboardPage() {
-  const user = await requireUser();
-  const projects = await listProjectsForUser(user.id);
+  const { workspace } = await requireWorkspace();
+  const projects = await listProjectsForWorkspace(workspace.id);
 
   if (projects.length === 0) {
     return (
@@ -16,7 +16,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            All your client projects in one place.
+            All projects in <span className="font-medium">{workspace.name}</span>.
           </p>
         </div>
         <EmptyProjectsState />
@@ -30,7 +30,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            All your client projects in one place.
+            All projects in <span className="font-medium">{workspace.name}</span>.
           </p>
         </div>
       </div>

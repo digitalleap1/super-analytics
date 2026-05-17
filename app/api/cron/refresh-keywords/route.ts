@@ -49,7 +49,21 @@ export async function GET(request: Request) {
   const keywords = await prisma.keyword.findMany({
     include: {
       project: {
-        select: { id: true, userId: true, gscSiteUrl: true, domain: true },
+        select: {
+          id: true,
+          gscSiteUrl: true,
+          domain: true,
+          workspaceId: true,
+          workspace: {
+            select: {
+              memberships: {
+                select: { userId: true },
+                orderBy: { createdAt: "asc" },
+                take: 1,
+              },
+            },
+          },
+        },
       },
     },
   });
@@ -122,8 +136,13 @@ export async function GET(request: Request) {
         console.log(`${label} → dataforseo API failed (${elapsed}ms), trying GSC`);
       }
 
+      // For the GSC fallback we need *some* user's Google token. Use the
+      // oldest member of the workspace (typically the owner). If they haven't
+      // connected Google, getKeywordDaily falls through to stub anyway.
+      const fallbackUserId =
+        kw.project.workspace.memberships[0]?.userId ?? "";
       const rows = await getKeywordDaily({
-        userId: kw.project.userId,
+        userId: fallbackUserId,
         projectId: kw.project.id,
         siteUrl: kw.project.gscSiteUrl,
         query: kw.query,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
@@ -29,6 +29,8 @@ type RegisterValues = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
   const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get("next") ?? "/dashboard";
   const [isPending, startTransition] = useTransition();
 
   const {
@@ -72,7 +74,7 @@ export function RegisterForm() {
         return;
       }
       toast.success("Account created");
-      router.push("/dashboard");
+      router.push(next);
       router.refresh();
     });
   }

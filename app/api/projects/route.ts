@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 
-import { getApiUser } from "@/lib/api-auth";
+import { getApiWorkspace } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { projectCreateSchema } from "@/lib/validators";
 
 export async function GET() {
-  const { user, response } = await getApiUser();
-  if (!user) return response;
+  const { workspace, response } = await getApiWorkspace();
+  if (!workspace) return response;
 
   const projects = await prisma.project.findMany({
-    where: { userId: user.id },
+    where: { workspaceId: workspace.id },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -26,8 +26,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { user, response } = await getApiUser();
-  if (!user) return response;
+  const { workspace, response } = await getApiWorkspace();
+  if (!workspace) return response;
 
   let body: unknown;
   try {
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
   const project = await prisma.project.create({
     data: {
-      userId: user.id,
+      workspaceId: workspace.id,
       name: parsed.data.name,
       domain: parsed.data.domain,
       logoUrl: parsed.data.logoUrl ?? null,

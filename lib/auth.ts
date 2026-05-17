@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { prisma } from "./prisma";
 import authConfig from "./auth.config";
+import { ensureUserHasWorkspace } from "./workspaces";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -47,4 +48,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
+  events: {
+    // Fires when the PrismaAdapter creates a User row (OAuth signup, account
+    // linking on first Google sign-in). Credentials signups go through
+    // /api/auth/register which calls ensureUserHasWorkspace directly.
+    async createUser({ user }) {
+      if (user.id) {
+        await ensureUserHasWorkspace(user.id);
+      }
+    },
+  },
 });

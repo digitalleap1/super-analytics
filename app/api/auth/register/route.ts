@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
+import { ensureUserHasWorkspace } from "@/lib/workspaces";
 
 const registerSchema = z.object({
   name: z.string().min(1).max(120),
@@ -41,6 +42,10 @@ export async function POST(request: Request) {
     data: { name, email, passwordHash },
     select: { id: true, email: true, name: true },
   });
+
+  // Every user gets a personal workspace + owner membership on signup.
+  // They can later be invited into other workspaces alongside this one.
+  await ensureUserHasWorkspace(user.id);
 
   return NextResponse.json({ user }, { status: 201 });
 }
