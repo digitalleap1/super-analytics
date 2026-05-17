@@ -9,11 +9,15 @@ import {
 
 // Per-keyword daily refresh.
 //
-// Priority order for each keyword:
-//   1. DataForSEO SERP Live (when DATAFORSEO_LOGIN/PASSWORD set) — real organic
-//      position from a live SERP scrape; stored as TODAY's date.
-//   2. GSC searchanalytics.query — yesterday's data from Search Console (only
-//      returns positions for queries that actually drove impressions).
+// Decision tree per keyword:
+//   1. If DataForSEO is configured AND it returns a real SERP:
+//      - Domain found in top 100 -> store rank
+//      - Domain NOT in top 100   -> store nothing (notInSerp)
+//      (We do NOT fall back to GSC here, because we know DataForSEO
+//       authoritatively answered "no, your site isn't ranking" — we shouldn't
+//       overwrite that with stub-shaped GSC data.)
+//   2. If DataForSEO is not configured, OR the API call itself failed
+//      (creds, network, country unsupported), fall back to GSC.
 //
 // Protected by CRON_SECRET. Designed for nightly invocation via Vercel Cron,
 // a node-cron script, or a manual hit while developing.
@@ -53,6 +57,7 @@ export async function GET(request: Request) {
   const useSeoApi = isSeoApiConfigured();
   const results = {
     dataforseo: 0,
+    notInSerp: 0,
     gsc: 0,
     skipped: 0,
     errors: 0,
@@ -69,16 +74,18 @@ export async function GET(request: Request) {
     try {
       if (useSeoApi) {
         const t0 = Date.now();
-        const rank = await fetchKeywordRankToday({
+        const result = await fetchKeywordRankToday({
           query: kw.query,
           country: kw.country,
           device: kw.device,
           domain: kw.project.domain,
         });
-        console.log(
-          `${label} → dataforseo ${rank ? `pos ${rank.row.position}` : "not in SERP"} (${Date.now() - t0}ms)`,
-        );
-        if (rank) {
+        const elapsed = Date.now() - t0;
+
+        if (result?.status === "found") {
+          console.log(
+            `${label} → dataforseo pos ${result.row.position} (${elapsed}ms)`,
+          );
           await prisma.keywordRanking.upsert({
             where: {
               keywordId_date: { keywordId: kw.id, date: today },
@@ -86,23 +93,33 @@ export async function GET(request: Request) {
             create: {
               keywordId: kw.id,
               date: today,
-              position: rank.row.position,
-              clicks: rank.row.clicks,
-              impressions: rank.row.impressions,
-              ctr: rank.row.ctr,
+              position: result.row.position,
+              clicks: result.row.clicks,
+              impressions: result.row.impressions,
+              ctr: result.row.ctr,
             },
             update: {
-              position: rank.row.position,
-              clicks: rank.row.clicks,
-              impressions: rank.row.impressions,
-              ctr: rank.row.ctr,
+              position: result.row.position,
+              clicks: result.row.clicks,
+              impressions: result.row.impressions,
+              ctr: result.row.ctr,
             },
           });
           results.dataforseo++;
           continue;
         }
-        // Fell through (domain not in SERP, country unsupported, API error) —
-        // try GSC if a site is connected.
+
+        if (result?.status === "not_in_serp") {
+          // Authoritative "not ranked in top 100" — don't store, don't fall
+          // back to GSC. Table will show "—" for this keyword.
+          console.log(`${label} → dataforseo not in SERP (${elapsed}ms)`);
+          results.notInSerp++;
+          continue;
+        }
+
+        // result === null: API call itself failed (creds, network, country).
+        // Fall through to GSC below.
+        console.log(`${label} → dataforseo API failed (${elapsed}ms), trying GSC`);
       }
 
       const rows = await getKeywordDaily({

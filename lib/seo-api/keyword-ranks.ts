@@ -63,18 +63,21 @@ type DataForSeoResponse = {
   }>;
 };
 
+export type RankLookupResult =
+  | { status: "found"; source: RankSource; row: DailyMetric }
+  | { status: "not_in_serp"; source: RankSource } // SERP returned, domain wasn't there
+  | null; // null = API itself failed (creds, network, unsupported country)
+
 // Returns today's organic position for the given keyword on the given domain.
-// Returns null when:
-//   - DataForSEO creds are missing,
-//   - the API call fails,
-//   - the country isn't in our location map,
-//   - the domain isn't in the top 100 organic results for that query.
+//   - "found"       -> rank stored
+//   - "not_in_serp" -> SERP came back but domain isn't ranked in top 100
+//   - null          -> API failed; caller may fall back to a secondary source
 export async function fetchKeywordRankToday(opts: {
   query: string;
   country: string;
   device: string;
   domain: string;
-}): Promise<{ source: RankSource; row: DailyMetric } | null> {
+}): Promise<RankLookupResult> {
   if (!isSeoApiConfigured()) return null;
 
   const locationCode = LOCATION_CODES[opts.country];
@@ -147,9 +150,12 @@ export async function fetchKeywordRankToday(opts: {
     return itemDomain === target || itemDomain.endsWith(`.${target}`);
   });
 
-  if (!match || match.rank_group == null) return null;
+  if (!match || match.rank_group == null) {
+    return { status: "not_in_serp", source: "dataforseo" };
+  }
 
   return {
+    status: "found",
     source: "dataforseo",
     row: {
       date: ymd(new Date()),
