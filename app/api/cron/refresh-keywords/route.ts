@@ -58,15 +58,26 @@ export async function GET(request: Request) {
     errors: 0,
   };
 
+  console.log(
+    `[cron] refresh-keywords: ${keywords.length} keywords, primary source = ${useSeoApi ? "dataforseo" : "gsc"}`,
+  );
+
+  let idx = 0;
   for (const kw of keywords) {
+    idx++;
+    const label = `[cron ${idx}/${keywords.length}] "${kw.query}" (${kw.country}/${kw.device}) for ${kw.project.domain}`;
     try {
       if (useSeoApi) {
+        const t0 = Date.now();
         const rank = await fetchKeywordRankToday({
           query: kw.query,
           country: kw.country,
           device: kw.device,
           domain: kw.project.domain,
         });
+        console.log(
+          `${label} → dataforseo ${rank ? `pos ${rank.row.position}` : "not in SERP"} (${Date.now() - t0}ms)`,
+        );
         if (rank) {
           await prisma.keywordRanking.upsert({
             where: {
@@ -106,9 +117,11 @@ export async function GET(request: Request) {
       });
       const row = rows[0];
       if (!row) {
+        console.log(`${label} → no GSC data, skipped`);
         results.skipped++;
         continue;
       }
+      console.log(`${label} → gsc pos ${row.position}`);
       await prisma.keywordRanking.upsert({
         where: {
           keywordId_date: { keywordId: kw.id, date: yesterday },
@@ -130,10 +143,12 @@ export async function GET(request: Request) {
       });
       results.gsc++;
     } catch (err) {
-      console.error(`Failed to refresh keyword ${kw.id}:`, err);
+      console.error(`${label} → error:`, err);
       results.errors++;
     }
   }
+
+  console.log(`[cron] done`, results);
 
   return NextResponse.json({
     ok: true,
