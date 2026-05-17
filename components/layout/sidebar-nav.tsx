@@ -10,7 +10,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-1 flex-col gap-1 px-3">
+    <nav className="flex flex-1 flex-col gap-0.5 px-3">
       {NAV_ITEMS.map((item) => {
         const isActive =
           item.href === "/dashboard"
@@ -23,13 +23,27 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             href={item.href}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all",
               isActive
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
-            <Icon className="h-4 w-4" />
+            {/* Active-state accent bar on the left edge */}
+            <span
+              aria-hidden
+              className={cn(
+                "absolute inset-y-2 left-0 w-0.5 rounded-r-full bg-primary transition-opacity",
+                isActive ? "opacity-100" : "opacity-0",
+              )}
+            />
+            <Icon
+              className={cn(
+                "h-4 w-4 shrink-0 transition-transform",
+                isActive ? "text-primary" : "text-muted-foreground",
+                "group-hover:scale-110",
+              )}
+            />
             {item.label}
           </Link>
         );

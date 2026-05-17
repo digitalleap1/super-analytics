@@ -8,9 +8,13 @@ import {
   EyeOff,
   ExternalLink,
   Loader2,
+  MousePointerClick,
   Pencil,
   Save,
   Settings,
+  Sparkles,
+  TrendingUp,
+  Users,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -450,12 +454,16 @@ export function EditableProjectReport(props: Props) {
                 value={formatNumber(props.overview.totals.clicks)}
                 current={props.overview.totals.clicks}
                 previous={props.prevOverview?.totals.clicks}
+                icon={MousePointerClick}
+                accent="primary"
               />
               <KpiCard
                 label="Impressions"
                 value={formatNumber(props.overview.totals.impressions)}
                 current={props.overview.totals.impressions}
                 previous={props.prevOverview?.totals.impressions}
+                icon={Eye}
+                accent="navy"
               />
               <KpiCard
                 label="Avg position"
@@ -463,18 +471,24 @@ export function EditableProjectReport(props: Props) {
                 current={props.overview.totals.position}
                 previous={props.prevOverview?.totals.position}
                 invertDelta
+                icon={TrendingUp}
+                accent="primary"
               />
               <KpiCard
                 label="Users"
                 value={formatNumber(props.ga4Overview.totals.totalUsers)}
                 current={props.ga4Overview.totals.totalUsers}
                 previous={props.prevGa4?.totals.totalUsers}
+                icon={Users}
+                accent="navy"
               />
               <KpiCard
                 label="Key events"
                 value={formatNumber(props.ga4Overview.totals.keyEvents)}
                 current={props.ga4Overview.totals.keyEvents}
                 previous={props.prevGa4?.totals.keyEvents}
+                icon={Sparkles}
+                accent="primary"
               />
             </div>
           </section>

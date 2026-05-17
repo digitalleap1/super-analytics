@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { ExternalLink, MousePointerClick, Eye, TrendingUp, Users } from "lucide-react";
+import {
+  ArrowUpRight,
+  CheckCircle2,
+  Eye,
+  MousePointerClick,
+  Plus,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import type { ProjectListItem } from "@/lib/projects";
@@ -14,58 +22,76 @@ function StatBlock({
   icon: typeof Eye;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-      <div className="flex flex-col leading-tight">
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+    <div className="flex items-center gap-2 rounded-md bg-muted/40 px-2.5 py-1.5">
+      <Icon className="h-3.5 w-3.5 text-primary/70" />
+      <div className="flex min-w-0 flex-col leading-tight">
+        <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
           {label}
         </span>
-        <span className="text-sm font-medium">{value}</span>
+        <span className="truncate text-sm font-semibold tabular-nums">
+          {value}
+        </span>
       </div>
     </div>
   );
 }
 
 export function ProjectCard({ project }: { project: ProjectListItem }) {
+  const isConnected = !!project.gscSiteUrl;
+
   return (
     <Link href={`/projects/${project.id}`} className="group block">
-      <Card className="relative h-full overflow-hidden transition-shadow hover:shadow-md">
-        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-br from-primary/5 to-primary/0" />
-        <div className="relative p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h3 className="truncate text-base font-semibold leading-tight">
-                {project.name}
-              </h3>
-              <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground">
-                {project.domain}
-                <ExternalLink className="h-3 w-3" />
-              </p>
+      <Card className="relative h-full overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+        {/* gradient banner header */}
+        <div className="relative h-20 overflow-hidden bg-gradient-to-br from-primary/20 via-primary/5 to-transparent">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(238,39,112,0.18),transparent_55%)]" />
+          <ArrowUpRight className="absolute right-3 top-3 h-5 w-5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+        </div>
+        {/* logo overlapping the banner */}
+        <div className="relative -mt-7 px-5">
+          {project.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={project.logoUrl}
+              alt=""
+              className="h-14 w-14 rounded-xl border-2 border-card bg-card object-cover shadow-sm"
+            />
+          ) : (
+            <div className="flex h-14 w-14 items-center justify-center rounded-xl border-2 border-card bg-gradient-to-br from-primary to-primary/70 text-lg font-bold uppercase text-primary-foreground shadow-sm">
+              {project.name.slice(0, 2)}
             </div>
-            {project.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={project.logoUrl}
-                alt=""
-                className="h-9 w-9 rounded-md object-cover"
-              />
-            ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-sm font-semibold uppercase text-primary">
-                {project.name.slice(0, 2)}
-              </div>
-            )}
-          </div>
-          <div className="mt-6 grid grid-cols-2 gap-3">
+          )}
+        </div>
+        <div className="px-5 pb-5 pt-3">
+          <h3 className="truncate text-base font-semibold leading-tight">
+            {project.name}
+          </h3>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {project.domain}
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
             <StatBlock label="Clicks" value="—" icon={MousePointerClick} />
             <StatBlock label="Impressions" value="—" icon={Eye} />
             <StatBlock label="Avg Position" value="—" icon={TrendingUp} />
             <StatBlock label="Users" value="—" icon={Users} />
           </div>
-          <p className="mt-4 text-xs text-muted-foreground">
-            {project.gscSiteUrl
-              ? "Connected to Search Console"
-              : "Connect Search Console to see stats"}
-          </p>
+          <div className="mt-4 flex items-center gap-1.5 text-[11px]">
+            {isConnected ? (
+              <>
+                <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-muted-foreground">
+                  Connected to Search Console
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
+                <span className="text-muted-foreground">
+                  Connect Search Console for live stats
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </Card>
     </Link>
@@ -76,15 +102,15 @@ export function NewProjectCard() {
   return (
     <Link
       href="/projects/new"
-      className="group block h-full min-h-[200px] rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card/40 p-5 transition-colors hover:border-primary/60 hover:bg-card"
+      className="group block h-full min-h-[260px] rounded-xl border-2 border-dashed border-muted-foreground/25 bg-card/30 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/60 hover:bg-card hover:shadow-md"
     >
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <span className="text-2xl leading-none">+</span>
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-110">
+          <Plus className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-sm font-medium">New project</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm font-semibold">New project</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
             Add a client and connect data
           </p>
         </div>
