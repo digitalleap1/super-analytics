@@ -73,7 +73,7 @@ export function ClicksImpressionsChart({ data }: { data: Point[] }) {
             type="monotone"
             dataKey="impressions"
             name="Impressions"
-            stroke="hsl(217 91% 70%)"
+            stroke="hsl(230 52% 35%)"
             strokeWidth={2}
             strokeDasharray="4 3"
             dot={false}
