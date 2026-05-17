@@ -114,6 +114,21 @@ model Project {
   template      ReportTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   keywords      Keyword[]
   reports       ReportCache[]
+  backlinks     Backlink[]
+}
+
+model Backlink {
+  id          String   @id @default(cuid())
+  projectId   String
+  category    String // business_listing | profile_creation | social_bookmarking | microblogs | third_party_blogs | website_blogs | other
+  url         String
+  place       String?
+  notes       String?
+  submittedAt DateTime
+  createdAt   DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, submittedAt])
 }
 
 model Keyword {

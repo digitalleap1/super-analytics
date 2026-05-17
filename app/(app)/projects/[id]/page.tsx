@@ -10,6 +10,7 @@ import { withCache } from "@/lib/cache";
 import { getGa4Channels, getGa4Overview } from "@/lib/google/ga4";
 import { getGscOverview, getGscPages, getGscQueries } from "@/lib/google/gsc";
 import { getKeywordSnapshot } from "@/lib/keywords";
+import { listBacklinksInRange } from "@/lib/backlinks";
 import { loadTemplateForProject } from "@/lib/templates";
 
 export async function generateMetadata({
@@ -52,7 +53,7 @@ export default async function ProjectPage({
     suffix,
   });
 
-  const [overview, queries, pages, ga4Overview, ga4Channels, keywords] =
+  const [overview, queries, pages, ga4Overview, ga4Channels, keywords, backlinks] =
     await Promise.all([
       withCache(project.id, "gsc_overview", cacheKey("current"), () =>
         getGscOverview(baseOpts),
@@ -85,6 +86,11 @@ export default async function ProjectPage({
         userId: user.id,
         projectId: project.id,
         siteUrl: project.gscSiteUrl,
+        from: range.from,
+        to: range.to,
+      }),
+      listBacklinksInRange({
+        projectId: project.id,
         from: range.from,
         to: range.to,
       }),
@@ -147,6 +153,7 @@ export default async function ProjectPage({
       pages={pages.rows}
       channels={ga4Channels.rows}
       keywords={keywords}
+      backlinks={backlinks}
     />
   );
 }

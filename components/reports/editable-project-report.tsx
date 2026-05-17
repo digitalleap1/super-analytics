@@ -56,8 +56,9 @@ import {
   kpiGridClass,
 } from "@/lib/templates";
 import { cn, formatNumber, formatPosition } from "@/lib/utils";
-import { formatRangeLabel } from "@/lib/date-ranges";
 import type { KeywordRow } from "@/lib/keywords";
+import type { BacklinkRow } from "@/lib/backlinks";
+import { BacklinksSection } from "@/components/backlinks/backlinks-section";
 import type {
   Ga4ChannelRow,
   Ga4Overview,
@@ -86,6 +87,7 @@ type Props = {
   pages: GscPageRow[];
   channels: Ga4ChannelRow[];
   keywords: KeywordRow[];
+  backlinks: BacklinkRow[];
 };
 
 function SectionHeader({
@@ -565,6 +567,30 @@ export function EditableProjectReport(props: Props) {
           <HiddenSectionStub
             name="Tracked keywords"
             onShow={() => setSection("keywords", true)}
+          />
+        ) : null}
+
+        {/* Backlinks */}
+        {cfg.sections.backlinks ? (
+          <section>
+            {editing ? (
+              <SectionHeader
+                title=""
+                editing={editing}
+                onHide={() => setSection("backlinks", false)}
+              />
+            ) : null}
+            <BacklinksSection
+              projectId={props.project.id}
+              projectName={props.project.name}
+              rangeLabel={props.rangeLabel}
+              rows={props.backlinks}
+            />
+          </section>
+        ) : editing ? (
+          <HiddenSectionStub
+            name="Backlinks (pie chart + table)"
+            onShow={() => setSection("backlinks", true)}
           />
         ) : null}
 

@@ -5,6 +5,7 @@ export type SectionKey =
   | "chartClicksImpressions"
   | "chartPositionTrend"
   | "keywords"
+  | "backlinks"
   | "topQueries"
   | "topPages"
   | "ga4Channels";
@@ -32,6 +33,7 @@ export const DEFAULT_TEMPLATE_CONFIG: ReportTemplateConfig = {
     chartClicksImpressions: true,
     chartPositionTrend: true,
     keywords: true,
+    backlinks: true,
     topQueries: true,
     topPages: true,
     ga4Channels: true,
@@ -52,6 +54,7 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   chartClicksImpressions: "Clicks & impressions chart",
   chartPositionTrend: "Position trend chart",
   keywords: "Tracked keywords",
+  backlinks: "Backlinks (pie chart + table)",
   topQueries: "Top queries table",
   topPages: "Top pages table",
   ga4Channels: "GA4 channels table",
