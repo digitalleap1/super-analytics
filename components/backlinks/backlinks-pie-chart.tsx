@@ -28,8 +28,8 @@ export function BacklinksPieChart({ rows }: Props) {
 
   if (total === 0) {
     return (
-      <div className="flex h-56 flex-col items-center justify-center rounded-md border border-dashed bg-card/40 text-center">
-        <p className="text-3xl font-bold">0</p>
+      <div className="flex h-32 flex-col items-center justify-center rounded-md border border-dashed bg-card/40 text-center">
+        <p className="text-xl font-bold">0</p>
         <p className="mt-1 text-xs text-muted-foreground">
           No backlinks in this date range
         </p>
@@ -38,8 +38,8 @@ export function BacklinksPieChart({ rows }: Props) {
   }
 
   return (
-    <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-[1fr_auto]">
-      <div className="relative h-56">
+    <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[160px_1fr]">
+      <div className="relative h-32 w-32">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -48,8 +48,8 @@ export function BacklinksPieChart({ rows }: Props) {
               nameKey="name"
               cx="50%"
               cy="50%"
-              innerRadius={50}
-              outerRadius={80}
+              innerRadius={36}
+              outerRadius={60}
               stroke="hsl(var(--background))"
               strokeWidth={2}
             >
@@ -73,22 +73,22 @@ export function BacklinksPieChart({ rows }: Props) {
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-2xl font-bold leading-none">{formatNumber(total)}</p>
-          <p className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <p className="text-lg font-bold leading-none">{formatNumber(total)}</p>
+          <p className="mt-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">
             backlinks
           </p>
         </div>
       </div>
-      <ul className="space-y-1.5 text-sm">
+      <ul className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
         {data.map((d) => (
           <li key={d.name} className="flex items-center gap-2">
             <span
-              className={cn("inline-block h-3 w-3 rounded-sm")}
+              className={cn("inline-block h-2.5 w-2.5 shrink-0 rounded-sm")}
               style={{ backgroundColor: d.color }}
             />
-            <span className="min-w-0 flex-1 truncate">{d.name}</span>
-            <span className="font-medium tabular-nums">{d.value}</span>
-            <span className="ml-1 text-xs text-muted-foreground">
+            <span className="min-w-0 flex-1 truncate text-xs">{d.name}</span>
+            <span className="text-xs font-medium tabular-nums">{d.value}</span>
+            <span className="text-[10px] text-muted-foreground tabular-nums">
               {((d.value / total) * 100).toFixed(0)}%
             </span>
           </li>

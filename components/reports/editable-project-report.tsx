@@ -570,30 +570,6 @@ export function EditableProjectReport(props: Props) {
           />
         ) : null}
 
-        {/* Backlinks */}
-        {cfg.sections.backlinks ? (
-          <section>
-            {editing ? (
-              <SectionHeader
-                title=""
-                editing={editing}
-                onHide={() => setSection("backlinks", false)}
-              />
-            ) : null}
-            <BacklinksSection
-              projectId={props.project.id}
-              projectName={props.project.name}
-              rangeLabel={props.rangeLabel}
-              rows={props.backlinks}
-            />
-          </section>
-        ) : editing ? (
-          <HiddenSectionStub
-            name="Backlinks (pie chart + table)"
-            onShow={() => setSection("backlinks", true)}
-          />
-        ) : null}
-
         {/* Report tables */}
         {showAnyTable ? (
           <section>
@@ -626,6 +602,30 @@ export function EditableProjectReport(props: Props) {
               setSection("topPages", true);
               setSection("ga4Channels", true);
             }}
+          />
+        ) : null}
+
+        {/* Backlinks (placed after the GSC/GA4 tables) */}
+        {cfg.sections.backlinks ? (
+          <section>
+            {editing ? (
+              <SectionHeader
+                title=""
+                editing={editing}
+                onHide={() => setSection("backlinks", false)}
+              />
+            ) : null}
+            <BacklinksSection
+              projectId={props.project.id}
+              projectName={props.project.name}
+              rangeLabel={props.rangeLabel}
+              rows={props.backlinks}
+            />
+          </section>
+        ) : editing ? (
+          <HiddenSectionStub
+            name="Backlinks (pie chart + table)"
+            onShow={() => setSection("backlinks", true)}
           />
         ) : null}
 
