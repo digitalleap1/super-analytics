@@ -110,6 +110,16 @@ export function ReportTables({ projectName, queries, pages, channels }: Props) {
         cell: (info) => formatPercent(info.getValue<number>()),
       },
       {
+        accessorKey: "keyEvents",
+        header: "Key events",
+        cell: (info) => formatNumber(info.getValue<number>()),
+      },
+      {
+        accessorKey: "eventCount",
+        header: "Events",
+        cell: (info) => formatNumber(info.getValue<number>()),
+      },
+      {
         accessorKey: "conversions",
         header: "Conversions",
         cell: (info) => formatNumber(info.getValue<number>()),
@@ -179,6 +189,8 @@ export function ReportTables({ projectName, queries, pages, channels }: Props) {
               { key: "sessions", header: "Sessions" },
               { key: "totalUsers", header: "Users" },
               { key: "engagementRate", header: "Engagement" },
+              { key: "keyEvents", header: "Key events" },
+              { key: "eventCount", header: "Events" },
               { key: "conversions", header: "Conversions" },
             ]}
           />

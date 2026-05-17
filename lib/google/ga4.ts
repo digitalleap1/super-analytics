@@ -31,6 +31,8 @@ const OVERVIEW_METRICS = [
   "totalUsers",
   "engagementRate",
   "conversions",
+  "keyEvents",
+  "eventCount",
   "screenPageViews",
 ] as const;
 
@@ -58,7 +60,9 @@ export async function getGa4Overview(opts: FetchOpts): Promise<Ga4Overview> {
         totalUsers: get(1),
         engagementRate: get(2),
         conversions: get(3),
-        screenPageViews: get(4),
+        keyEvents: get(4),
+        eventCount: get(5),
+        screenPageViews: get(6),
       },
       source: "live",
     };
@@ -89,6 +93,8 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
           { name: "totalUsers" },
           { name: "engagementRate" },
           { name: "conversions" },
+          { name: "keyEvents" },
+          { name: "eventCount" },
         ],
         limit: "20",
       },
@@ -99,6 +105,8 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
       totalUsers: Number(r.metricValues?.[1]?.value ?? 0),
       engagementRate: Number(r.metricValues?.[2]?.value ?? 0),
       conversions: Number(r.metricValues?.[3]?.value ?? 0),
+      keyEvents: Number(r.metricValues?.[4]?.value ?? 0),
+      eventCount: Number(r.metricValues?.[5]?.value ?? 0),
     }));
     return { rows, source: "live" };
   } catch {

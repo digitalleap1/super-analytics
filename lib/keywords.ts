@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getKeywordDaily } from "@/lib/google/gsc";
-import { presetRange, previousPeriod } from "@/lib/date-ranges";
+import { fetchKeywordRank } from "@/lib/seo-api/keyword-ranks";
+import { ymd } from "@/lib/date-ranges";
 
 export type KeywordRow = {
   id: string;
@@ -9,84 +10,103 @@ export type KeywordRow = {
   device: string;
   tag: string | null;
   currentPosition: number | null;
-  delta7d: number | null;
-  delta28d: number | null;
-  clicks28d: number;
-  impressions28d: number;
+  startPosition: number | null;
+  delta: number | null; // start - current  (positive = improved)
+  clicks: number;
+  impressions: number;
   bestPosition: number | null;
   history: { date: string; position: number }[];
+  source: "seo_api" | "gsc" | "stub" | "persisted";
 };
 
-// Returns a snapshot per keyword. Uses persisted KeywordRanking history when
-// available; falls back to live (or stub) GSC fetch on the fly.
+// Returns a snapshot per keyword for the given date range. Position deltas are
+// computed over the selected window: `startPosition` is the position on/near
+// `from`, `currentPosition` is the position on/near `to`. Data source order:
+// 1. External SEO API (lib/seo-api/keyword-ranks.ts) if configured
+// 2. Persisted KeywordRanking rows in the date range (if enough exist)
+// 3. Live GSC fetch (falls back to stub internally when token/site is missing)
 export async function getKeywordSnapshot(opts: {
   userId: string;
   projectId: string;
   siteUrl: string | null;
+  from: Date;
+  to: Date;
 }): Promise<KeywordRow[]> {
+  const fromIso = ymd(opts.from);
+  const toIso = ymd(opts.to);
+
   const keywords = await prisma.keyword.findMany({
     where: { projectId: opts.projectId },
     orderBy: { createdAt: "desc" },
     include: {
       rankings: {
-        orderBy: { date: "desc" },
-        take: 90,
+        where: { date: { gte: opts.from, lte: opts.to } },
+        orderBy: { date: "asc" },
       },
     },
   });
 
-  const range = presetRange("last28");
-  const prev = previousPeriod(range);
-  const last7 = presetRange("last7");
-
   const snapshots = await Promise.all(
     keywords.map(async (kw) => {
-      let history = kw.rankings
-        .slice()
-        .reverse()
-        .map((r) => ({
-          date: r.date.toISOString().slice(0, 10),
-          position: r.position,
-          clicks: r.clicks,
-          impressions: r.impressions,
-          ctr: r.ctr,
-        }));
+      let history: {
+        date: string;
+        position: number;
+        clicks: number;
+        impressions: number;
+        ctr: number;
+      }[] = kw.rankings.map((r) => ({
+        date: ymd(r.date),
+        position: r.position,
+        clicks: r.clicks,
+        impressions: r.impressions,
+        ctr: r.ctr,
+      }));
 
-      if (history.length < 7) {
-        // Pull live (or stub) daily series for the last 28 days.
-        const live = await getKeywordDaily({
-          userId: opts.userId,
-          projectId: opts.projectId,
-          siteUrl: opts.siteUrl,
+      let source: KeywordRow["source"] = "persisted";
+
+      const persistedSpan = history.length;
+      const expectedDays =
+        Math.round(
+          (opts.to.getTime() - opts.from.getTime()) / (1000 * 60 * 60 * 24),
+        ) + 1;
+
+      if (persistedSpan < Math.max(2, Math.min(7, expectedDays / 2))) {
+        // Persisted history is too thin — pull live data instead.
+        const external = await fetchKeywordRank({
           query: kw.query,
           country: kw.country,
           device: kw.device,
-          from: range.from,
-          to: range.to,
+          from: opts.from,
+          to: opts.to,
         });
-        history = live;
+        if (external) {
+          history = external.rows;
+          source = external.source;
+        } else {
+          history = await getKeywordDaily({
+            userId: opts.userId,
+            projectId: opts.projectId,
+            siteUrl: opts.siteUrl,
+            query: kw.query,
+            country: kw.country,
+            device: kw.device,
+            from: opts.from,
+            to: opts.to,
+          });
+          source = opts.siteUrl ? "gsc" : "stub";
+        }
       }
 
-      const positionAt = (cutoffISO: string) => {
-        const row = history.find((h) => h.date >= cutoffISO);
-        return row?.position ?? null;
-      };
-
-      const currentPosition = history.length
-        ? history[history.length - 1].position
-        : null;
-      const startOf28 = range.from.toISOString().slice(0, 10);
-      const startOf7 = last7.from.toISOString().slice(0, 10);
-      const startOfPrev28 = prev.from.toISOString().slice(0, 10);
-
-      const pos28Start = positionAt(startOf28);
-      const pos7Start = positionAt(startOf7);
-      const posPrev28 = positionAt(startOfPrev28);
-
-      const last28 = history.filter((h) => h.date >= startOf28);
-      const clicks28d = last28.reduce((s, r) => s + r.clicks, 0);
-      const impressions28d = last28.reduce((s, r) => s + r.impressions, 0);
-      const bestPosition = history.reduce<number | null>(
+      const inRange = history.filter((h) => h.date >= fromIso && h.date <= toIso);
+      const startPosition = inRange[0]?.position ?? null;
+      const currentPosition = inRange[inRange.length - 1]?.position ?? null;
+      const delta =
+        startPosition !== null && currentPosition !== null
+          ? startPosition - currentPosition
+          : null;
+      const clicks = inRange.reduce((s, r) => s + r.clicks, 0);
+      const impressions = inRange.reduce((s, r) => s + r.impressions, 0);
+      const bestPosition = inRange.reduce<number | null>(
         (best, r) => (best === null ? r.position : Math.min(best, r.position)),
         null,
       );
@@ -98,18 +118,13 @@ export async function getKeywordSnapshot(opts: {
         device: kw.device,
         tag: kw.tag,
         currentPosition,
-        delta7d:
-          currentPosition !== null && pos7Start !== null
-            ? pos7Start - currentPosition
-            : null,
-        delta28d:
-          currentPosition !== null && pos28Start !== null
-            ? pos28Start - currentPosition
-            : null,
-        clicks28d,
-        impressions28d,
+        startPosition,
+        delta,
+        clicks,
+        impressions,
         bestPosition,
-        history: history.map((h) => ({ date: h.date, position: h.position })),
+        history: inRange.map((h) => ({ date: h.date, position: h.position })),
+        source,
       } satisfies KeywordRow;
     }),
   );

@@ -82,12 +82,16 @@ export function parseRangeFromSearchParams(sp: {
   from?: string | string[];
   to?: string | string[];
   preset?: string | string[];
+  compare?: string | string[];
 }): { range: DateRange; preset: RangePreset; compare: boolean } {
   const get = (v: string | string[] | undefined): string | undefined =>
     Array.isArray(v) ? v[0] : v;
   const fromStr = get(sp.from);
   const toStr = get(sp.to);
   const presetStr = get(sp.preset) as RangePreset | undefined;
+  const compareStr = get(sp.compare);
+  // Default to true unless explicitly disabled via ?compare=0|false|off
+  const compare = !(compareStr === "0" || compareStr === "false" || compareStr === "off");
 
   if (fromStr && toStr) {
     const from = new Date(fromStr);
@@ -96,7 +100,7 @@ export function parseRangeFromSearchParams(sp: {
       return {
         range: { from: startOfDay(from), to: startOfDay(to) },
         preset: presetStr ?? "custom",
-        compare: true,
+        compare,
       };
     }
   }
@@ -105,7 +109,7 @@ export function parseRangeFromSearchParams(sp: {
   return {
     range: presetRange(preset),
     preset,
-    compare: true,
+    compare,
   };
 }
 

@@ -58,6 +58,8 @@ export type Ga4Overview = {
     totalUsers: number;
     engagementRate: number;
     conversions: number;
+    keyEvents: number;
+    eventCount: number;
     screenPageViews: number;
   };
   source: "live" | "stub";
@@ -69,6 +71,8 @@ export type Ga4ChannelRow = {
   totalUsers: number;
   engagementRate: number;
   conversions: number;
+  keyEvents: number;
+  eventCount: number;
 };
 
 export type Ga4ChannelsResult = {

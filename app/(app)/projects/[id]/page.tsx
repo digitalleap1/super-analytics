@@ -5,11 +5,13 @@ import { requireProject } from "@/lib/projects";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/reports/date-range-picker";
+import { DownloadPdfButton } from "@/components/reports/download-pdf-button";
 import { KpiCard } from "@/components/reports/kpi-card";
 import { ClicksImpressionsChart } from "@/components/charts/clicks-impressions-chart";
 import { PositionTrendChart } from "@/components/charts/position-trend-chart";
 import { ReportTables } from "@/components/reports/report-tables";
 import {
+  formatRangeLabel,
   parseRangeFromSearchParams,
   previousPeriod,
   ymd,
@@ -116,9 +118,11 @@ export default async function ProjectPage({
   const isStub =
     overview.source === "stub" || ga4Overview.source === "stub";
 
+  const pdfFilename = `${project.name.replace(/[^\w-]+/g, "-").toLowerCase()}-${ymd(range.from)}-to-${ymd(range.to)}`;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="truncate text-2xl font-semibold tracking-tight">
             {project.name}
@@ -133,8 +137,9 @@ export default async function ProjectPage({
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DateRangePicker />
+          <DownloadPdfButton filename={pdfFilename} targetId="report-pdf" />
           <Button asChild variant="outline" size="sm">
             <Link href={`/projects/${project.id}/settings`}>
               <Settings className="mr-2 h-4 w-4" />
@@ -144,69 +149,87 @@ export default async function ProjectPage({
         </div>
       </div>
 
-      {isStub ? (
-        <Card className="border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
-          Showing <strong>sample data</strong> — connect this project to
-          Google Search Console and Analytics in project settings (or set
-          Google OAuth credentials in <code>.env</code>) to load live numbers.
-        </Card>
-      ) : null}
+      <div id="report-pdf" className="space-y-6 bg-background">
+        <div className="hidden border-b pb-3 print:block">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {project.name}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {project.domain} · {formatRangeLabel(range)}
+            {compare ? " · vs. previous period" : ""}
+          </p>
+        </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <KpiCard
-          label="Clicks"
-          value={formatNumber(overview.totals.clicks)}
-          current={overview.totals.clicks}
-          previous={prevOverview?.totals.clicks}
-        />
-        <KpiCard
-          label="Impressions"
-          value={formatNumber(overview.totals.impressions)}
-          current={overview.totals.impressions}
-          previous={prevOverview?.totals.impressions}
-        />
-        <KpiCard
-          label="Avg position"
-          value={overview.totals.position.toFixed(1)}
-          current={overview.totals.position}
-          previous={prevOverview?.totals.position}
-          invertDelta
-        />
-        <KpiCard
-          label="Users"
-          value={formatNumber(ga4Overview.totals.totalUsers)}
-          current={ga4Overview.totals.totalUsers}
-          previous={prevGa4?.totals.totalUsers}
+        {isStub ? (
+          <Card className="border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100 print:hidden">
+            Showing <strong>sample data</strong> — connect this project to
+            Google Search Console and Analytics in project settings (or set
+            Google OAuth credentials in <code>.env</code>) to load live numbers.
+          </Card>
+        ) : null}
+
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+          <KpiCard
+            label="Clicks"
+            value={formatNumber(overview.totals.clicks)}
+            current={overview.totals.clicks}
+            previous={prevOverview?.totals.clicks}
+          />
+          <KpiCard
+            label="Impressions"
+            value={formatNumber(overview.totals.impressions)}
+            current={overview.totals.impressions}
+            previous={prevOverview?.totals.impressions}
+          />
+          <KpiCard
+            label="Avg position"
+            value={overview.totals.position.toFixed(1)}
+            current={overview.totals.position}
+            previous={prevOverview?.totals.position}
+            invertDelta
+          />
+          <KpiCard
+            label="Users"
+            value={formatNumber(ga4Overview.totals.totalUsers)}
+            current={ga4Overview.totals.totalUsers}
+            previous={prevGa4?.totals.totalUsers}
+          />
+          <KpiCard
+            label="Key events"
+            value={formatNumber(ga4Overview.totals.keyEvents)}
+            current={ga4Overview.totals.keyEvents}
+            previous={prevGa4?.totals.keyEvents}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card className="p-5">
+            <h3 className="text-sm font-medium">Clicks &amp; impressions</h3>
+            <p className="text-xs text-muted-foreground">
+              Daily totals across the selected range.
+            </p>
+            <div className="mt-4">
+              <ClicksImpressionsChart data={overview.series} />
+            </div>
+          </Card>
+          <Card className="p-5">
+            <h3 className="text-sm font-medium">Position trend</h3>
+            <p className="text-xs text-muted-foreground">
+              Average position — lower is better.
+            </p>
+            <div className="mt-4">
+              <PositionTrendChart data={overview.series} />
+            </div>
+          </Card>
+        </div>
+
+        <ReportTables
+          projectName={project.name}
+          queries={queries.rows}
+          pages={pages.rows}
+          channels={ga4Channels.rows}
         />
       </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="p-5">
-          <h3 className="text-sm font-medium">Clicks &amp; impressions</h3>
-          <p className="text-xs text-muted-foreground">
-            Daily totals across the selected range.
-          </p>
-          <div className="mt-4">
-            <ClicksImpressionsChart data={overview.series} />
-          </div>
-        </Card>
-        <Card className="p-5">
-          <h3 className="text-sm font-medium">Position trend</h3>
-          <p className="text-xs text-muted-foreground">
-            Average position — lower is better.
-          </p>
-          <div className="mt-4">
-            <PositionTrendChart data={overview.series} />
-          </div>
-        </Card>
-      </div>
-
-      <ReportTables
-        projectName={project.name}
-        queries={queries.rows}
-        pages={pages.rows}
-        channels={ga4Channels.rows}
-      />
     </div>
   );
 }

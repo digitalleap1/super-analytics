@@ -184,6 +184,8 @@ export function stubGa4Overview(
   const totalUsers = Math.round(sessions * (0.62 + rng() * 0.18));
   const engagementRate = 0.45 + rng() * 0.25;
   const conversions = Math.round(sessions * (0.012 + rng() * 0.04));
+  const keyEvents = Math.round(sessions * (0.018 + rng() * 0.05));
+  const eventCount = Math.round(sessions * (4 + rng() * 6));
   const screenPageViews = Math.round(sessions * (1.8 + rng() * 1.4));
   return {
     totals: {
@@ -191,6 +193,8 @@ export function stubGa4Overview(
       totalUsers,
       engagementRate,
       conversions,
+      keyEvents,
+      eventCount,
       screenPageViews,
     },
     source: "stub",
@@ -214,7 +218,17 @@ export function stubGa4Channels(seed: string, from: Date, to: Date): Ga4ChannelR
     const totalUsers = Math.round(sessions * (0.6 + rng() * 0.2));
     const engagementRate = 0.35 + rng() * 0.35;
     const conversions = Math.round(sessions * (0.01 + rng() * 0.04));
-    return { channel: s.channel, sessions, totalUsers, engagementRate, conversions };
+    const keyEvents = Math.round(sessions * (0.018 + rng() * 0.06));
+    const eventCount = Math.round(sessions * (3 + rng() * 6));
+    return {
+      channel: s.channel,
+      sessions,
+      totalUsers,
+      engagementRate,
+      conversions,
+      keyEvents,
+      eventCount,
+    };
   });
 }
 

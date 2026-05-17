@@ -2,7 +2,14 @@
 
 import { Fragment, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, Trash2, ArrowDown, ArrowUp, Minus } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Trash2,
+  ArrowDown,
+  ArrowUp,
+  Minus,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -14,10 +21,10 @@ import type { KeywordRow } from "@/lib/keywords";
 type SortKey =
   | "query"
   | "currentPosition"
-  | "delta7d"
-  | "delta28d"
-  | "clicks28d"
-  | "impressions28d"
+  | "startPosition"
+  | "delta"
+  | "clicks"
+  | "impressions"
   | "bestPosition";
 
 function deltaBadge(delta: number | null) {
@@ -31,7 +38,7 @@ function deltaBadge(delta: number | null) {
       </span>
     );
   }
-  // Positive delta = position improved (number went down by `delta`)
+  // Positive delta = position improved (rank number went down).
   const improved = delta > 0;
   return (
     <span
@@ -132,7 +139,9 @@ export function KeywordsTable({ projectId, projectName, initialRows }: Props) {
         return;
       }
       const body = (await res.json()) as { deleted: number };
-      toast.success(`Deleted ${body.deleted} keyword${body.deleted === 1 ? "" : "s"}`);
+      toast.success(
+        `Deleted ${body.deleted} keyword${body.deleted === 1 ? "" : "s"}`,
+      );
       setSelected(new Set());
       router.refresh();
     });
@@ -201,26 +210,28 @@ export function KeywordsTable({ projectId, projectName, initialRows }: Props) {
               query: r.query,
               country: r.country,
               device: r.device,
+              startPosition: r.startPosition?.toFixed(1) ?? "",
               currentPosition: r.currentPosition?.toFixed(1) ?? "",
-              delta7d: r.delta7d?.toFixed(1) ?? "",
-              delta28d: r.delta28d?.toFixed(1) ?? "",
-              clicks28d: r.clicks28d,
-              impressions28d: r.impressions28d,
+              delta: r.delta?.toFixed(1) ?? "",
+              clicks: r.clicks,
+              impressions: r.impressions,
               bestPosition: r.bestPosition?.toFixed(1) ?? "",
               tag: r.tag ?? "",
+              source: r.source,
             })) as Record<string, unknown>[]
           }
           columns={[
             { key: "query", header: "Query" },
             { key: "country", header: "Country" },
             { key: "device", header: "Device" },
+            { key: "startPosition", header: "Range start position" },
             { key: "currentPosition", header: "Current position" },
-            { key: "delta7d", header: "7d Δ" },
-            { key: "delta28d", header: "28d Δ" },
-            { key: "clicks28d", header: "Clicks (28d)" },
-            { key: "impressions28d", header: "Impressions (28d)" },
+            { key: "delta", header: "Δ (positive = improved)" },
+            { key: "clicks", header: "Clicks" },
+            { key: "impressions", header: "Impressions" },
             { key: "bestPosition", header: "Best position" },
             { key: "tag", header: "Tag" },
+            { key: "source", header: "Source" },
           ]}
         />
       </div>
@@ -251,19 +262,19 @@ export function KeywordsTable({ projectId, projectName, initialRows }: Props) {
                 </span>
               </th>
               <th className="px-3 py-2 text-right">
-                <SortHeader k="currentPosition" label="Position" />
+                <SortHeader k="startPosition" label="Start" />
               </th>
               <th className="px-3 py-2 text-right">
-                <SortHeader k="delta7d" label="7d Δ" />
+                <SortHeader k="currentPosition" label="Current" />
               </th>
               <th className="px-3 py-2 text-right">
-                <SortHeader k="delta28d" label="28d Δ" />
+                <SortHeader k="delta" label="Δ in range" />
               </th>
               <th className="px-3 py-2 text-right">
-                <SortHeader k="clicks28d" label="Clicks" />
+                <SortHeader k="clicks" label="Clicks" />
               </th>
               <th className="px-3 py-2 text-right">
-                <SortHeader k="impressions28d" label="Impr." />
+                <SortHeader k="impressions" label="Impr." />
               </th>
               <th className="px-3 py-2 text-right">
                 <SortHeader k="bestPosition" label="Best" />
@@ -311,20 +322,20 @@ export function KeywordsTable({ projectId, projectName, initialRows }: Props) {
                     <td className="px-3 py-2 capitalize text-muted-foreground">
                       {row.device}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 text-right text-muted-foreground">
+                      {formatPosition(row.startPosition)}
+                    </td>
+                    <td className="px-3 py-2 text-right font-medium">
                       {formatPosition(row.currentPosition)}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      {deltaBadge(row.delta7d)}
+                      {deltaBadge(row.delta)}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      {deltaBadge(row.delta28d)}
+                      {formatNumber(row.clicks)}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      {formatNumber(row.clicks28d)}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      {formatNumber(row.impressions28d)}
+                      {formatNumber(row.impressions)}
                     </td>
                     <td className="px-3 py-2 text-right">
                       {formatPosition(row.bestPosition)}

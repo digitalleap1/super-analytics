@@ -40,6 +40,7 @@ export function DateRangePicker() {
   const [preset, setPreset] = useState<RangePreset>(current.preset);
   const [from, setFrom] = useState(ymd(current.range.from));
   const [to, setTo] = useState(ymd(current.range.to));
+  const [compare, setCompare] = useState(current.compare);
   const [isPending, startTransition] = useTransition();
 
   function applyPreset(p: RangePreset) {
@@ -61,6 +62,11 @@ export function DateRangePicker() {
       const r = presetRange(preset);
       next.set("from", ymd(r.from));
       next.set("to", ymd(r.to));
+    }
+    if (compare) {
+      next.delete("compare");
+    } else {
+      next.set("compare", "0");
     }
     startTransition(() => {
       router.push(`${pathname}?${next.toString()}`);
@@ -124,6 +130,20 @@ export function DateRangePicker() {
             Range: {formatRangeLabel(current.range)}
           </p>
         )}
+        <label className="flex cursor-pointer items-center justify-between rounded-md border bg-card/40 px-3 py-2">
+          <div>
+            <p className="text-sm font-medium">Compare to previous period</p>
+            <p className="text-xs text-muted-foreground">
+              Show delta vs. the equivalent prior window
+            </p>
+          </div>
+          <input
+            type="checkbox"
+            checked={compare}
+            onChange={(e) => setCompare(e.target.checked)}
+            className="h-4 w-4 accent-primary"
+          />
+        </label>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
             Cancel

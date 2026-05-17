@@ -62,3 +62,22 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+@media print {
+  aside,
+  header,
+  .print\:hidden {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  table {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
