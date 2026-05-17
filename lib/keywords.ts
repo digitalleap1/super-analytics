@@ -64,15 +64,11 @@ export async function getKeywordSnapshot(opts: {
 
       let source: KeywordRow["source"] = "persisted";
 
-      const persistedSpan = history.length;
-      const expectedDays =
-        Math.round(
-          (opts.to.getTime() - opts.from.getTime()) / (1000 * 60 * 60 * 24),
-        ) + 1;
-
-      if (persistedSpan < Math.max(2, Math.min(7, expectedDays / 2))) {
-        // Persisted history is too thin (no cron runs yet, or fresh keyword).
-        // Pull a synthetic series from GSC so the page has something to show.
+      // Only fall back to GSC/stub when we have NO persisted data for this
+      // keyword in the range. One day of real cron data is still real data —
+      // it just means startPosition === currentPosition and Δ = 0 until the
+      // cron has run for more days.
+      if (history.length === 0) {
         history = await getKeywordDaily({
           userId: opts.userId,
           projectId: opts.projectId,
