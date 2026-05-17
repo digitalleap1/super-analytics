@@ -1,49 +1,164 @@
-// Placeholder for an external SEO API integration (e.g. SerpApi, DataForSEO,
-// Ahrefs, Semrush) that does pure rank tracking — not limited to GSC's
-// impression-driven query set.
+// External rank-tracking integration.
 //
-// To wire your provider:
-// 1. Add provider creds to .env (e.g. SEO_API_KEY, SEO_API_PROVIDER).
-// 2. Replace the body of `fetchKeywordRank` with a real call.
-// 3. lib/keywords.ts will pick this up automatically as the preferred source,
-//    falling back to GSC (and then to stub) when this returns null.
+// Currently wired to DataForSEO SERP API (Live / Google / Organic / Regular).
+// Each call returns today's SERP for one keyword in one location/device combo,
+// and we extract the organic position for the project's domain. The cron route
+// invokes this once per keyword per day and upserts into KeywordRanking, so
+// daily history builds up from real SERP data.
+//
+// To swap to a different provider (SerpAPI, Semrush, Ahrefs, etc.), replace
+// the body of `fetchKeywordRankToday` and keep the same return shape.
 
-import { stubKeywordDaily } from "@/lib/google/stub";
 import type { DailyMetric } from "@/lib/google/types";
 
-export type RankProvider = "seo_api" | "gsc" | "stub";
+export type RankSource = "dataforseo" | "stub";
 
 export function isSeoApiConfigured(): boolean {
-  return !!process.env.SEO_API_KEY;
+  return !!(process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD);
 }
 
-export async function fetchKeywordRank(_opts: {
+// ISO-3 lowercase -> DataForSEO location_code
+const LOCATION_CODES: Record<string, number> = {
+  usa: 2840,
+  gbr: 2826,
+  can: 2124,
+  aus: 2036,
+  ind: 2356,
+  deu: 2276,
+  fra: 2250,
+  esp: 2724,
+  ita: 2380,
+  nld: 2528,
+};
+
+function normalizeDomain(d: string): string {
+  return d
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/.*$/, "");
+}
+
+function ymd(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+type SerpItem = {
+  type?: string;
+  rank_group?: number;
+  rank_absolute?: number;
+  domain?: string;
+  url?: string;
+};
+
+type DataForSeoResponse = {
+  status_code?: number;
+  status_message?: string;
+  tasks?: Array<{
+    status_code?: number;
+    status_message?: string;
+    result?: Array<{
+      items?: SerpItem[];
+    }>;
+  }>;
+};
+
+// Returns today's organic position for the given keyword on the given domain.
+// Returns null when:
+//   - DataForSEO creds are missing,
+//   - the API call fails,
+//   - the country isn't in our location map,
+//   - the domain isn't in the top 100 organic results for that query.
+export async function fetchKeywordRankToday(opts: {
   query: string;
   country: string;
   device: string;
-  from: Date;
-  to: Date;
-}): Promise<{ source: RankProvider; rows: DailyMetric[] } | null> {
+  domain: string;
+}): Promise<{ source: RankSource; row: DailyMetric } | null> {
   if (!isSeoApiConfigured()) return null;
 
-  // TODO: replace this stub with your SEO API request.
-  // Example shape for SerpAPI / DataForSEO:
-  //
-  //   const res = await fetch(`https://api.provider.com/v1/keyword?...`, {
-  //     headers: { Authorization: `Bearer ${process.env.SEO_API_KEY}` }
-  //   });
-  //   const data = await res.json();
-  //   return { source: "seo_api", rows: data.history.map(normalize) };
-  //
-  // For now, when SEO_API_KEY is set we fall through to deterministic stub data
-  // so the UI is still demoable. Remove this fallback once the real call is in.
+  const locationCode = LOCATION_CODES[opts.country];
+  if (!locationCode) return null;
+
+  const login = process.env.DATAFORSEO_LOGIN!;
+  const password = process.env.DATAFORSEO_PASSWORD!;
+  const auth = Buffer.from(`${login}:${password}`).toString("base64");
+
+  const device =
+    opts.device === "mobile" || opts.device === "tablet" ? "mobile" : "desktop";
+
+  const body = [
+    {
+      keyword: opts.query,
+      location_code: locationCode,
+      language_code: "en",
+      device,
+      os: device === "mobile" ? "android" : "windows",
+      depth: 100,
+    },
+  ];
+
+  let json: DataForSeoResponse;
+  try {
+    const res = await fetch(
+      "https://api.dataforseo.com/v3/serp/google/organic/live/regular",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${auth}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      },
+    );
+    if (!res.ok) {
+      console.error(
+        `[dataforseo] HTTP ${res.status} for "${opts.query}"`,
+      );
+      return null;
+    }
+    json = (await res.json()) as DataForSeoResponse;
+  } catch (err) {
+    console.error(`[dataforseo] fetch failed for "${opts.query}":`, err);
+    return null;
+  }
+
+  if (json.status_code !== 20000) {
+    console.error(
+      `[dataforseo] status ${json.status_code}: ${json.status_message}`,
+    );
+    return null;
+  }
+
+  const task = json.tasks?.[0];
+  if (task?.status_code !== 20000) {
+    console.error(
+      `[dataforseo] task status ${task?.status_code}: ${task?.status_message}`,
+    );
+    return null;
+  }
+
+  const items = task.result?.[0]?.items ?? [];
+  const target = normalizeDomain(opts.domain);
+
+  const match = items.find((it) => {
+    if (it.type !== "organic") return false;
+    const itemDomain = normalizeDomain(it.domain ?? "");
+    return itemDomain === target || itemDomain.endsWith(`.${target}`);
+  });
+
+  if (!match || match.rank_group == null) return null;
+
   return {
-    source: "stub",
-    rows: stubKeywordDaily(
-      `seo-api:${_opts.query}`,
-      _opts.query,
-      _opts.from,
-      _opts.to,
-    ),
+    source: "dataforseo",
+    row: {
+      date: ymd(new Date()),
+      position: match.rank_group,
+      // DataForSEO Live SERP doesn't return clicks/impressions — those are
+      // GSC-only metrics. We leave them zero and let GSC fill them in.
+      clicks: 0,
+      impressions: 0,
+      ctr: 0,
+    },
   };
 }

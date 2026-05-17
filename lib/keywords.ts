@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { getKeywordDaily } from "@/lib/google/gsc";
-import { fetchKeywordRank } from "@/lib/seo-api/keyword-ranks";
 import { ymd } from "@/lib/date-ranges";
 
 export type KeywordRow = {
@@ -16,15 +15,16 @@ export type KeywordRow = {
   impressions: number;
   bestPosition: number | null;
   history: { date: string; position: number }[];
-  source: "seo_api" | "gsc" | "stub" | "persisted";
+  source: "dataforseo" | "gsc" | "stub" | "persisted";
 };
 
 // Returns a snapshot per keyword for the given date range. Position deltas are
 // computed over the selected window: `startPosition` is the position on/near
 // `from`, `currentPosition` is the position on/near `to`. Data source order:
-// 1. External SEO API (lib/seo-api/keyword-ranks.ts) if configured
-// 2. Persisted KeywordRanking rows in the date range (if enough exist)
-// 3. Live GSC fetch (falls back to stub internally when token/site is missing)
+// 1. Persisted KeywordRanking rows in the date range (filled nightly by cron
+//    via DataForSEO SERP API or GSC, depending on which is configured)
+// 2. Live GSC fetch as a one-shot when history is thin
+// 3. Stub (deterministic) when no GSC site is configured
 export async function getKeywordSnapshot(opts: {
   userId: string;
   projectId: string;
@@ -71,30 +71,19 @@ export async function getKeywordSnapshot(opts: {
         ) + 1;
 
       if (persistedSpan < Math.max(2, Math.min(7, expectedDays / 2))) {
-        // Persisted history is too thin — pull live data instead.
-        const external = await fetchKeywordRank({
+        // Persisted history is too thin (no cron runs yet, or fresh keyword).
+        // Pull a synthetic series from GSC so the page has something to show.
+        history = await getKeywordDaily({
+          userId: opts.userId,
+          projectId: opts.projectId,
+          siteUrl: opts.siteUrl,
           query: kw.query,
           country: kw.country,
           device: kw.device,
           from: opts.from,
           to: opts.to,
         });
-        if (external) {
-          history = external.rows;
-          source = external.source;
-        } else {
-          history = await getKeywordDaily({
-            userId: opts.userId,
-            projectId: opts.projectId,
-            siteUrl: opts.siteUrl,
-            query: kw.query,
-            country: kw.country,
-            device: kw.device,
-            from: opts.from,
-            to: opts.to,
-          });
-          source = opts.siteUrl ? "gsc" : "stub";
-        }
+        source = opts.siteUrl ? "gsc" : "stub";
       }
 
       const inRange = history.filter((h) => h.date >= fromIso && h.date <= toIso);

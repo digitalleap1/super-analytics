@@ -2,12 +2,23 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { getKeywordDaily } from "@/lib/google/gsc";
+import {
+  fetchKeywordRankToday,
+  isSeoApiConfigured,
+} from "@/lib/seo-api/keyword-ranks";
 
-// Hits GSC once per tracked keyword for "yesterday" and upserts into
-// KeywordRanking. Protected by CRON_SECRET. Designed for nightly invocation
-// via Vercel Cron, a node-cron script, or just a manual hit while developing.
+// Per-keyword daily refresh.
 //
-// Curl: curl -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/cron/refresh-keywords
+// Priority order for each keyword:
+//   1. DataForSEO SERP Live (when DATAFORSEO_LOGIN/PASSWORD set) — real organic
+//      position from a live SERP scrape; stored as TODAY's date.
+//   2. GSC searchanalytics.query — yesterday's data from Search Console (only
+//      returns positions for queries that actually drove impressions).
+//
+// Protected by CRON_SECRET. Designed for nightly invocation via Vercel Cron,
+// a node-cron script, or a manual hit while developing.
+//
+// curl -H "x-cron-secret: $CRON_SECRET" http://localhost:3000/api/cron/refresh-keywords
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -26,21 +37,63 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  yesterday.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
 
   const keywords = await prisma.keyword.findMany({
     include: {
       project: {
-        select: { id: true, userId: true, gscSiteUrl: true },
+        select: { id: true, userId: true, gscSiteUrl: true, domain: true },
       },
     },
   });
 
-  let upserts = 0;
+  const useSeoApi = isSeoApiConfigured();
+  const results = {
+    dataforseo: 0,
+    gsc: 0,
+    skipped: 0,
+    errors: 0,
+  };
+
   for (const kw of keywords) {
     try {
+      if (useSeoApi) {
+        const rank = await fetchKeywordRankToday({
+          query: kw.query,
+          country: kw.country,
+          device: kw.device,
+          domain: kw.project.domain,
+        });
+        if (rank) {
+          await prisma.keywordRanking.upsert({
+            where: {
+              keywordId_date: { keywordId: kw.id, date: today },
+            },
+            create: {
+              keywordId: kw.id,
+              date: today,
+              position: rank.row.position,
+              clicks: rank.row.clicks,
+              impressions: rank.row.impressions,
+              ctr: rank.row.ctr,
+            },
+            update: {
+              position: rank.row.position,
+              clicks: rank.row.clicks,
+              impressions: rank.row.impressions,
+              ctr: rank.row.ctr,
+            },
+          });
+          results.dataforseo++;
+          continue;
+        }
+        // Fell through (domain not in SERP, country unsupported, API error) —
+        // try GSC if a site is connected.
+      }
+
       const rows = await getKeywordDaily({
         userId: kw.project.userId,
         projectId: kw.project.id,
@@ -52,7 +105,10 @@ export async function GET(request: Request) {
         to: yesterday,
       });
       const row = rows[0];
-      if (!row) continue;
+      if (!row) {
+        results.skipped++;
+        continue;
+      }
       await prisma.keywordRanking.upsert({
         where: {
           keywordId_date: { keywordId: kw.id, date: yesterday },
@@ -72,16 +128,17 @@ export async function GET(request: Request) {
           ctr: row.ctr,
         },
       });
-      upserts++;
+      results.gsc++;
     } catch (err) {
       console.error(`Failed to refresh keyword ${kw.id}:`, err);
+      results.errors++;
     }
   }
 
   return NextResponse.json({
     ok: true,
     keywords: keywords.length,
-    upserts,
-    date: yesterday.toISOString().slice(0, 10),
+    primarySource: useSeoApi ? "dataforseo" : "gsc",
+    results,
   });
 }
