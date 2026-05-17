@@ -10,7 +10,7 @@ import { withCache } from "@/lib/cache";
 import { getGa4Channels, getGa4Overview } from "@/lib/google/ga4";
 import { getGscOverview, getGscPages, getGscQueries } from "@/lib/google/gsc";
 import { getKeywordSnapshot } from "@/lib/keywords";
-import { listBacklinksInRange } from "@/lib/backlinks";
+import { listBacklinkMonthlyStats, listBacklinksInRange } from "@/lib/backlinks";
 import { loadTemplateForProject } from "@/lib/templates";
 
 export async function generateMetadata({
@@ -53,8 +53,16 @@ export default async function ProjectPage({
     suffix,
   });
 
-  const [overview, queries, pages, ga4Overview, ga4Channels, keywords, backlinks] =
-    await Promise.all([
+  const [
+    overview,
+    queries,
+    pages,
+    ga4Overview,
+    ga4Channels,
+    keywords,
+    backlinks,
+    backlinkMonthly,
+  ] = await Promise.all([
       withCache(project.id, "gsc_overview", cacheKey("current"), () =>
         getGscOverview(baseOpts),
       ),
@@ -93,6 +101,10 @@ export default async function ProjectPage({
         projectId: project.id,
         from: range.from,
         to: range.to,
+      }),
+      listBacklinkMonthlyStats({
+        projectId: project.id,
+        monthsBack: 6,
       }),
     ]);
 
@@ -154,6 +166,7 @@ export default async function ProjectPage({
       channels={ga4Channels.rows}
       keywords={keywords}
       backlinks={backlinks}
+      backlinkMonthly={backlinkMonthly}
     />
   );
 }

@@ -61,7 +61,7 @@ import {
 } from "@/lib/templates";
 import { cn, formatNumber, formatPosition } from "@/lib/utils";
 import type { KeywordRow } from "@/lib/keywords";
-import type { BacklinkRow } from "@/lib/backlinks";
+import type { BacklinkMonthBucket, BacklinkRow } from "@/lib/backlinks";
 import { BacklinksSection } from "@/components/backlinks/backlinks-section";
 import type {
   Ga4ChannelRow,
@@ -92,6 +92,7 @@ type Props = {
   channels: Ga4ChannelRow[];
   keywords: KeywordRow[];
   backlinks: BacklinkRow[];
+  backlinkMonthly: BacklinkMonthBucket[];
 };
 
 function SectionHeader({
@@ -634,6 +635,7 @@ export function EditableProjectReport(props: Props) {
               projectName={props.project.name}
               rangeLabel={props.rangeLabel}
               rows={props.backlinks}
+              monthly={props.backlinkMonthly}
             />
           </section>
         ) : editing ? (

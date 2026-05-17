@@ -62,6 +62,56 @@ export type BacklinkRow = {
   createdAt: string;
 };
 
+export type BacklinkMonthBucket = {
+  month: string; // YYYY-MM
+  label: string; // "May 2026"
+  count: number;
+};
+
+// Counts backlinks grouped by calendar month for the last `monthsBack` months
+// (including the current month). Independent of the report's date range filter.
+export async function listBacklinkMonthlyStats(opts: {
+  projectId: string;
+  monthsBack: number;
+}): Promise<BacklinkMonthBucket[]> {
+  const now = new Date();
+  const start = new Date(
+    now.getFullYear(),
+    now.getMonth() - (opts.monthsBack - 1),
+    1,
+  );
+  const rows = await prisma.backlink.findMany({
+    where: {
+      projectId: opts.projectId,
+      submittedAt: { gte: start },
+    },
+    select: { submittedAt: true },
+  });
+
+  const buckets: BacklinkMonthBucket[] = [];
+  for (let i = 0; i < opts.monthsBack; i++) {
+    const d = new Date(
+      now.getFullYear(),
+      now.getMonth() - (opts.monthsBack - 1 - i),
+      1,
+    );
+    const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("en-US", {
+      month: "short",
+      year: "numeric",
+    });
+    buckets.push({ month, label, count: 0 });
+  }
+  const byMonth = new Map(buckets.map((b) => [b.month, b]));
+  for (const r of rows) {
+    const d = r.submittedAt;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const b = byMonth.get(key);
+    if (b) b.count++;
+  }
+  return buckets;
+}
+
 export async function listBacklinksInRange(opts: {
   projectId: string;
   from: Date;
