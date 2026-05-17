@@ -5,19 +5,27 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatNumber(n: number, decimals = 0): string {
+export function formatNumber(
+  n: number | null | undefined,
+  decimals = 0,
+): string {
+  if (n == null || !Number.isFinite(n)) return "—";
   return n.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
 }
 
-export function formatPercent(n: number, decimals = 1): string {
+export function formatPercent(
+  n: number | null | undefined,
+  decimals = 1,
+): string {
+  if (n == null || !Number.isFinite(n)) return "—";
   return `${(n * 100).toFixed(decimals)}%`;
 }
 
 export function formatPosition(n: number | null | undefined): string {
-  if (n == null) return "—";
+  if (n == null || !Number.isFinite(n)) return "—";
   return n.toFixed(1);
 }
 

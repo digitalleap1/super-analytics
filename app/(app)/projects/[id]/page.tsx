@@ -19,7 +19,7 @@ import {
 import { withCache } from "@/lib/cache";
 import { getGa4Channels, getGa4Overview } from "@/lib/google/ga4";
 import { getGscOverview, getGscPages, getGscQueries } from "@/lib/google/gsc";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, formatPosition } from "@/lib/utils";
 
 export async function generateMetadata({
   params,
@@ -183,7 +183,7 @@ export default async function ProjectPage({
           />
           <KpiCard
             label="Avg position"
-            value={overview.totals.position.toFixed(1)}
+            value={formatPosition(overview.totals.position)}
             current={overview.totals.position}
             previous={prevOverview?.totals.position}
             invertDelta
