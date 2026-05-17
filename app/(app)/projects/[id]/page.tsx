@@ -19,6 +19,8 @@ import {
 import { withCache } from "@/lib/cache";
 import { getGa4Channels, getGa4Overview } from "@/lib/google/ga4";
 import { getGscOverview, getGscPages, getGscQueries } from "@/lib/google/gsc";
+import { getKeywordSnapshot } from "@/lib/keywords";
+import { KeywordsSummary } from "@/components/reports/keywords-summary";
 import { formatNumber, formatPosition } from "@/lib/utils";
 
 export async function generateMetadata({
@@ -55,35 +57,43 @@ export default async function ProjectPage({
     suffix,
   });
 
-  const [overview, queries, pages, ga4Overview, ga4Channels] = await Promise.all([
-    withCache(project.id, "gsc_overview", cacheKey("current"), () =>
-      getGscOverview(baseOpts),
-    ),
-    withCache(project.id, "gsc_queries", cacheKey("current"), () =>
-      getGscQueries(baseOpts),
-    ),
-    withCache(project.id, "gsc_pages", cacheKey("current"), () =>
-      getGscPages({ ...baseOpts, domain: project.domain }),
-    ),
-    withCache(project.id, "ga4_overview", cacheKey("current"), () =>
-      getGa4Overview({
+  const [overview, queries, pages, ga4Overview, ga4Channels, keywords] =
+    await Promise.all([
+      withCache(project.id, "gsc_overview", cacheKey("current"), () =>
+        getGscOverview(baseOpts),
+      ),
+      withCache(project.id, "gsc_queries", cacheKey("current"), () =>
+        getGscQueries(baseOpts),
+      ),
+      withCache(project.id, "gsc_pages", cacheKey("current"), () =>
+        getGscPages({ ...baseOpts, domain: project.domain }),
+      ),
+      withCache(project.id, "ga4_overview", cacheKey("current"), () =>
+        getGa4Overview({
+          userId: user.id,
+          projectId: project.id,
+          propertyId: project.ga4PropertyId,
+          from: range.from,
+          to: range.to,
+        }),
+      ),
+      withCache(project.id, "ga4_channels", cacheKey("current"), () =>
+        getGa4Channels({
+          userId: user.id,
+          projectId: project.id,
+          propertyId: project.ga4PropertyId,
+          from: range.from,
+          to: range.to,
+        }),
+      ),
+      getKeywordSnapshot({
         userId: user.id,
         projectId: project.id,
-        propertyId: project.ga4PropertyId,
+        siteUrl: project.gscSiteUrl,
         from: range.from,
         to: range.to,
       }),
-    ),
-    withCache(project.id, "ga4_channels", cacheKey("current"), () =>
-      getGa4Channels({
-        userId: user.id,
-        projectId: project.id,
-        propertyId: project.ga4PropertyId,
-        from: range.from,
-        to: range.to,
-      }),
-    ),
-  ]);
+    ]);
 
   const prevOverview = prev
     ? await withCache(
@@ -222,6 +232,12 @@ export default async function ProjectPage({
             </div>
           </Card>
         </div>
+
+        <KeywordsSummary
+          projectId={project.id}
+          projectName={project.name}
+          rows={keywords}
+        />
 
         <ReportTables
           projectName={project.name}
