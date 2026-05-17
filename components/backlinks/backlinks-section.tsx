@@ -14,6 +14,7 @@ type Props = {
   rangeLabel: string;
   rows: BacklinkRow[];
   monthly: BacklinkMonthBucket[];
+  readOnly?: boolean;
 };
 
 export function BacklinksSection({
@@ -22,6 +23,7 @@ export function BacklinksSection({
   rangeLabel,
   rows,
   monthly,
+  readOnly = false,
 }: Props) {
   return (
     <Card className="space-y-5 p-5">
@@ -33,10 +35,12 @@ export function BacklinksSection({
             {monthly.length} months regardless of the date filter.
           </p>
         </div>
-        <div className="flex items-center gap-2 print:hidden">
-          <ImportBacklinksDialog projectId={projectId} />
-          <AddBacklinkDialog projectId={projectId} />
-        </div>
+        {!readOnly ? (
+          <div className="flex items-center gap-2 print:hidden">
+            <ImportBacklinksDialog projectId={projectId} />
+            <AddBacklinkDialog projectId={projectId} />
+          </div>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_1.2fr]">
@@ -58,6 +62,7 @@ export function BacklinksSection({
         projectId={projectId}
         projectName={projectName}
         rows={rows}
+        readOnly={readOnly}
       />
     </Card>
   );

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  Bookmark,
   Eye,
   EyeOff,
   ExternalLink,
@@ -63,6 +64,7 @@ import { cn, formatNumber, formatPosition } from "@/lib/utils";
 import type { KeywordRow } from "@/lib/keywords";
 import type { BacklinkMonthBucket, BacklinkRow } from "@/lib/backlinks";
 import { BacklinksSection } from "@/components/backlinks/backlinks-section";
+import { SaveReportDialog } from "@/components/reports/save-report-dialog";
 import type {
   Ga4ChannelRow,
   Ga4Overview,
@@ -93,6 +95,13 @@ type Props = {
   keywords: KeywordRow[];
   backlinks: BacklinkRow[];
   backlinkMonthly: BacklinkMonthBucket[];
+  fromDate: string; // YYYY-MM-DD; used by the Save report dialog
+  toDate: string;
+  mode?: "live" | "snapshot";
+  snapshotMeta?: {
+    name: string;
+    createdAt: string;
+  };
 };
 
 function SectionHeader({
@@ -362,25 +371,72 @@ export function EditableProjectReport(props: Props) {
         <div className="flex flex-wrap items-center gap-2">
           {!editing ? (
             <>
-              <DateRangePicker />
+              {props.mode === "snapshot" ? (
+                <Button asChild variant="ghost" size="sm">
+                  <Link href={`/projects/${props.project.id}/reports`}>
+                    ← Back to saved
+                  </Link>
+                </Button>
+              ) : (
+                <DateRangePicker />
+              )}
               <DownloadPdfButton
                 filename={props.pdfFilename}
                 targetId="report-pdf"
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEditing(true)}
-              >
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit layout
-              </Button>
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/projects/${props.project.id}/settings`}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </Link>
-              </Button>
+              {props.mode !== "snapshot" ? (
+                <>
+                  <SaveReportDialog
+                    projectId={props.project.id}
+                    defaultName={`${props.project.name} — ${props.rangeLabel}`}
+                    fromDate={props.fromDate}
+                    toDate={props.toDate}
+                    buildSnapshot={() => ({
+                      version: 1,
+                      projectName: props.project.name,
+                      projectDomain: props.project.domain,
+                      rangeLabel: props.rangeLabel,
+                      fromDate: props.fromDate,
+                      toDate: props.toDate,
+                      compare: props.compare,
+                      isStub: props.isStub,
+                      pdfFilename: props.pdfFilename,
+                      config,
+                      template: props.template,
+                      overview: props.overview,
+                      prevOverview: props.prevOverview,
+                      ga4Overview: props.ga4Overview,
+                      prevGa4: props.prevGa4,
+                      queries: props.queries,
+                      pages: props.pages,
+                      channels: props.channels,
+                      keywords: props.keywords,
+                      backlinks: props.backlinks,
+                      backlinkMonthly: props.backlinkMonthly,
+                    })}
+                  />
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/projects/${props.project.id}/reports`}>
+                      <Bookmark className="mr-2 h-4 w-4" />
+                      Saved
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditing(true)}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit layout
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/projects/${props.project.id}/settings`}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      Settings
+                    </Link>
+                  </Button>
+                </>
+              ) : null}
             </>
           ) : (
             <>
@@ -410,6 +466,15 @@ export function EditableProjectReport(props: Props) {
           <strong>Editing layout.</strong> Toggle sections on/off, change column
           counts, table sizes and density. Hit <em>Save layout</em> to persist;
           <em> Cancel</em> discards your changes.
+        </Card>
+      ) : null}
+
+      {props.mode === "snapshot" && props.snapshotMeta ? (
+        <Card className="border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100 print:hidden">
+          <strong>Saved snapshot:</strong> &ldquo;{props.snapshotMeta.name}&rdquo;
+          — frozen on{" "}
+          <span className="font-mono">{props.snapshotMeta.createdAt}</span>.
+          Numbers reflect what was live at save time, not today.
         </Card>
       ) : null}
 
@@ -636,6 +701,7 @@ export function EditableProjectReport(props: Props) {
               rangeLabel={props.rangeLabel}
               rows={props.backlinks}
               monthly={props.backlinkMonthly}
+              readOnly={props.mode === "snapshot"}
             />
           </section>
         ) : editing ? (

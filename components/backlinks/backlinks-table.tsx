@@ -13,9 +13,15 @@ type Props = {
   projectId: string;
   projectName: string;
   rows: BacklinkRow[];
+  readOnly?: boolean;
 };
 
-export function BacklinksTable({ projectId, projectName, rows }: Props) {
+export function BacklinksTable({
+  projectId,
+  projectName,
+  rows,
+  readOnly = false,
+}: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
@@ -65,7 +71,7 @@ export function BacklinksTable({ projectId, projectName, rows }: Props) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          {selected.size > 0 ? (
+          {!readOnly && selected.size > 0 ? (
             <>
               <span className="text-sm text-muted-foreground">
                 {selected.size} selected
@@ -114,14 +120,16 @@ export function BacklinksTable({ projectId, projectName, rows }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-muted/40">
             <tr>
-              <th className="w-8 px-3 py-2">
-                <input
-                  type="checkbox"
-                  checked={selected.size === rows.length && rows.length > 0}
-                  onChange={toggleAll}
-                  className="accent-primary"
-                />
-              </th>
+              {!readOnly ? (
+                <th className="w-8 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={selected.size === rows.length && rows.length > 0}
+                    onChange={toggleAll}
+                    className="accent-primary"
+                  />
+                </th>
+              ) : null}
               <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Category
               </th>
@@ -141,14 +149,16 @@ export function BacklinksTable({ projectId, projectName, rows }: Props) {
               const meta = categoryMeta(r.category);
               return (
                 <tr key={r.id} className="border-t">
-                  <td className="px-3 py-2">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(r.id)}
-                      onChange={() => toggle(r.id)}
-                      className="accent-primary"
-                    />
-                  </td>
+                  {!readOnly ? (
+                    <td className="px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(r.id)}
+                        onChange={() => toggle(r.id)}
+                        className="accent-primary"
+                      />
+                    </td>
+                  ) : null}
                   <td className="px-3 py-2">
                     <span className="inline-flex items-center gap-1.5">
                       <span

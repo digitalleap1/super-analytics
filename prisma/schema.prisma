@@ -115,6 +115,22 @@ model Project {
   keywords      Keyword[]
   reports       ReportCache[]
   backlinks     Backlink[]
+  savedReports  SavedReport[]
+}
+
+model SavedReport {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  fromDate    DateTime
+  toDate      DateTime
+  snapshot    String // JSON: frozen snapshot of all rendered data + template config at save time
+  shareToken  String?  @unique
+  createdById String
+  createdAt   DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
 }
 
 model Backlink {

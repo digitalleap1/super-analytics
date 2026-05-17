@@ -167,6 +167,9 @@ export default async function ProjectPage({
       keywords={keywords}
       backlinks={backlinks}
       backlinkMonthly={backlinkMonthly}
+      fromDate={ymd(range.from)}
+      toDate={ymd(range.to)}
+      mode="live"
     />
   );
 }
