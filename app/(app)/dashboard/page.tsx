@@ -3,18 +3,74 @@ import { LayoutDashboard } from "lucide-react";
 import { listProjectsForWorkspace, requireWorkspace } from "@/lib/projects";
 import { NewProjectCard, ProjectCard } from "@/components/projects/project-card";
 import { EmptyProjectsState } from "@/components/projects/empty-state";
+import { presetRange, ymd } from "@/lib/date-ranges";
+import { withCache } from "@/lib/cache";
+import { getGscOverview } from "@/lib/google/gsc";
+import { getGa4Overview } from "@/lib/google/ga4";
 
 export const metadata = {
   title: "Dashboard — SEO Dashboard",
 };
 
 export default async function DashboardPage() {
-  const { workspace } = await requireWorkspace();
+  const { user, workspace } = await requireWorkspace();
   const projects = await listProjectsForWorkspace(workspace.id);
+
+  // Pull last-28-days stats for every connected project in parallel. Each
+  // fetch goes through ReportCache (6h TTL), so the dashboard pays the
+  // Google API cost once per project per 6h and is instant on repeat loads.
+  const range = presetRange("last28");
+  const cacheSuffix = "dashboard";
+
+  const projectsWithStats = await Promise.all(
+    projects.map(async (p) => {
+      const baseKey = {
+        from: ymd(range.from),
+        to: ymd(range.to),
+        suffix: cacheSuffix,
+      };
+
+      const [gsc, ga4] = await Promise.all([
+        p.gscSiteUrl
+          ? withCache(p.id, "gsc_overview", baseKey, () =>
+              getGscOverview({
+                userId: user.id,
+                projectId: p.id,
+                siteUrl: p.gscSiteUrl,
+                from: range.from,
+                to: range.to,
+              }),
+            )
+          : null,
+        p.ga4PropertyId
+          ? withCache(p.id, "ga4_overview", baseKey, () =>
+              getGa4Overview({
+                userId: user.id,
+                projectId: p.id,
+                propertyId: p.ga4PropertyId,
+                from: range.from,
+                to: range.to,
+              }),
+            )
+          : null,
+      ]);
+
+      return {
+        ...p,
+        stats: {
+          clicks: gsc?.totals.clicks ?? null,
+          impressions: gsc?.totals.impressions ?? null,
+          position: gsc?.totals.position ?? null,
+          users: ga4?.totals.totalUsers ?? null,
+          gscSource: gsc?.source ?? null,
+          ga4Source: ga4?.source ?? null,
+        },
+      };
+    }),
+  );
 
   return (
     <div className="space-y-6">
-      {/* Hero header */}
       <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/10 via-card to-card p-6 sm:p-8">
         <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
         <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-[hsl(230_52%_35%)]/10 blur-3xl" />
@@ -38,6 +94,11 @@ export default async function DashboardPage() {
                     {workspace.name}
                   </span>
                 )}
+                {projects.length > 0 ? (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    · stats over last 28 days
+                  </span>
+                ) : null}
               </p>
             </div>
           </div>
@@ -48,7 +109,7 @@ export default async function DashboardPage() {
         <EmptyProjectsState />
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {projects.map((project) => (
+          {projectsWithStats.map((project) => (
             <ProjectCard key={project.id} project={project} />
           ))}
           <NewProjectCard />

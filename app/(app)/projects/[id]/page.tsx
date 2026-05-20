@@ -138,7 +138,13 @@ export default async function ProjectPage({
       )
     : null;
 
-  const isStub = overview.source === "stub" || ga4Overview.source === "stub";
+  // The stub banner reflects the project's connection state, NOT the live API
+  // result. If the project IS connected (GSC site URL + GA4 property both set)
+  // we treat the numbers as live, even if a token blip caused a stub fallback
+  // this request — that's a transient error, not a "sample data" situation.
+  const hasGsc = !!project.gscSiteUrl;
+  const hasGa4 = !!project.ga4PropertyId;
+  const isStub = !hasGsc && !hasGa4;
 
   const pdfFilename = `${project.name
     .replace(/[^\w-]+/g, "-")
@@ -156,6 +162,8 @@ export default async function ProjectPage({
       rangeLabel={formatRangeLabel(range)}
       compare={compare}
       isStub={isStub}
+      hasGsc={hasGsc}
+      hasGa4={hasGa4}
       pdfFilename={pdfFilename}
       overview={overview}
       prevOverview={prevOverview}

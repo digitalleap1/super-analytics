@@ -10,7 +10,19 @@ import {
 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
+import { formatNumber, formatPosition } from "@/lib/utils";
 import type { ProjectListItem } from "@/lib/projects";
+
+type ProjectStats = {
+  clicks: number | null;
+  impressions: number | null;
+  position: number | null;
+  users: number | null;
+  gscSource: "live" | "stub" | null;
+  ga4Source: "live" | "stub" | null;
+};
+
+type ProjectCardData = ProjectListItem & { stats?: ProjectStats };
 
 function StatBlock({
   label,
@@ -36,18 +48,18 @@ function StatBlock({
   );
 }
 
-export function ProjectCard({ project }: { project: ProjectListItem }) {
-  const isConnected = !!project.gscSiteUrl;
+export function ProjectCard({ project }: { project: ProjectCardData }) {
+  const isGscConnected = !!project.gscSiteUrl;
+  const isGa4Connected = !!project.ga4PropertyId;
+  const s = project.stats;
 
   return (
     <Link href={`/projects/${project.id}`} className="group block">
       <Card className="relative h-full overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
-        {/* gradient banner header */}
         <div className="relative h-20 overflow-hidden bg-gradient-to-br from-primary/20 via-primary/5 to-transparent">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(238,39,112,0.18),transparent_55%)]" />
           <ArrowUpRight className="absolute right-3 top-3 h-5 w-5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
         </div>
-        {/* logo overlapping the banner */}
         <div className="relative -mt-7 px-5">
           {project.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -70,24 +82,47 @@ export function ProjectCard({ project }: { project: ProjectListItem }) {
             {project.domain}
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2">
-            <StatBlock label="Clicks" value="—" icon={MousePointerClick} />
-            <StatBlock label="Impressions" value="—" icon={Eye} />
-            <StatBlock label="Avg Position" value="—" icon={TrendingUp} />
-            <StatBlock label="Users" value="—" icon={Users} />
+            <StatBlock
+              label="Clicks"
+              value={s?.clicks != null ? formatNumber(s.clicks) : "—"}
+              icon={MousePointerClick}
+            />
+            <StatBlock
+              label="Impressions"
+              value={s?.impressions != null ? formatNumber(s.impressions) : "—"}
+              icon={Eye}
+            />
+            <StatBlock
+              label="Avg Position"
+              value={s?.position != null ? formatPosition(s.position) : "—"}
+              icon={TrendingUp}
+            />
+            <StatBlock
+              label="Users"
+              value={s?.users != null ? formatNumber(s.users) : "—"}
+              icon={Users}
+            />
           </div>
           <div className="mt-4 flex items-center gap-1.5 text-[11px]">
-            {isConnected ? (
+            {isGscConnected && isGa4Connected ? (
               <>
                 <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                 <span className="text-muted-foreground">
-                  Connected to Search Console
+                  GSC + GA4 connected · last 28 days
+                </span>
+              </>
+            ) : isGscConnected || isGa4Connected ? (
+              <>
+                <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
+                <span className="text-muted-foreground">
+                  {isGscConnected ? "GA4 not connected" : "GSC not connected"}
                 </span>
               </>
             ) : (
               <>
                 <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
                 <span className="text-muted-foreground">
-                  Connect Search Console for live stats
+                  Connect GSC + GA4 for live stats
                 </span>
               </>
             )}

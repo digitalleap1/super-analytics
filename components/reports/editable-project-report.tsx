@@ -84,6 +84,8 @@ type Props = {
   rangeLabel: string;
   compare: boolean;
   isStub: boolean;
+  hasGsc?: boolean;
+  hasGa4?: boolean;
   pdfFilename: string;
   overview: GscOverview;
   prevOverview: GscOverview | null;
@@ -500,6 +502,18 @@ export function EditableProjectReport(props: Props) {
             Showing <strong>sample data</strong> — connect this project to
             Google Search Console and Analytics in project settings to load
             live numbers.
+          </Card>
+        ) : props.hasGsc === false ? (
+          <Card className="border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100 print:hidden">
+            Search Console isn&apos;t connected — clicks, impressions and
+            positions are sample. Connect in project settings to load real
+            numbers.
+          </Card>
+        ) : props.hasGa4 === false ? (
+          <Card className="border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100 print:hidden">
+            Analytics isn&apos;t connected — users, sessions and key events
+            are sample. Connect a GA4 property in project settings to load real
+            numbers.
           </Card>
         ) : null}
 
