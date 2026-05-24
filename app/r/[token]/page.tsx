@@ -55,10 +55,10 @@ export default async function PublicReportPage({
       <main className="mx-auto max-w-7xl px-4 py-8 md:px-8">
         <EditableProjectReport
           project={{
-            // ID intentionally blank-ish — share view shouldn't link back into the app.
             id: "",
             name: snapshot.projectName,
             domain: snapshot.projectDomain,
+            logoUrl: snapshot.projectLogoUrl ?? null,
           }}
           template={null}
           initialConfig={snapshot.config}

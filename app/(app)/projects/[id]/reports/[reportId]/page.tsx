@@ -54,6 +54,7 @@ export default async function ViewSavedReportPage({
           id: project.id,
           name: snapshot.projectName,
           domain: snapshot.projectDomain,
+          logoUrl: snapshot.projectLogoUrl ?? null,
         }}
         template={snapshot.template}
         initialConfig={snapshot.config}

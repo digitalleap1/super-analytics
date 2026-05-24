@@ -157,6 +157,7 @@ export default async function ProjectPage({
         id: project.id,
         name: project.name,
         domain: project.domain,
+        logoUrl: project.logoUrl,
       }}
       template={template}
       initialConfig={config}

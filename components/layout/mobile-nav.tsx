@@ -16,9 +16,10 @@ import { UserMenu } from "./user-menu";
 
 type MobileNavProps = {
   user: { name?: string | null; email?: string | null; image?: string | null };
+  isAdmin?: boolean;
 };
 
-export function MobileNav({ user }: MobileNavProps) {
+export function MobileNav({ user, isAdmin = false }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -41,7 +42,10 @@ export function MobileNav({ user }: MobileNavProps) {
           </Link>
         </div>
         <div className="py-4">
-          <SidebarNav onNavigate={() => setOpen(false)} />
+          <SidebarNav
+            onNavigate={() => setOpen(false)}
+            isAdmin={isAdmin}
+          />
         </div>
         <div className="mt-auto border-t p-3">
           <UserMenu name={user.name} email={user.email} image={user.image} />

@@ -6,16 +6,31 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "./nav-config";
 
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+type Props = {
+  onNavigate?: () => void;
+  isAdmin?: boolean;
+};
+
+export function SidebarNav({ onNavigate, isAdmin = false }: Props) {
   const pathname = usePathname();
+  const items = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
 
   return (
     <nav className="flex flex-1 flex-col gap-0.5 px-3">
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const isActive =
           item.href === "/dashboard"
-            ? pathname === "/dashboard" || pathname.startsWith("/projects")
-            : pathname.startsWith(item.href);
+            ? pathname === "/dashboard"
+            : item.href === "/projects"
+              ? pathname === "/projects" || pathname.startsWith("/projects/")
+              : item.href === "/settings/templates"
+                ? pathname.startsWith("/settings/templates")
+                : item.href === "/settings/users"
+                  ? pathname.startsWith("/settings/users")
+                  : item.href === "/settings"
+                    ? pathname === "/settings" ||
+                      pathname.startsWith("/settings/workspace")
+                    : pathname.startsWith(item.href);
         const Icon = item.icon;
         return (
           <Link
@@ -29,7 +44,6 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
-            {/* Active-state accent bar on the left edge */}
             <span
               aria-hidden
               className={cn(

@@ -17,6 +17,7 @@ export type SavedReportSnapshot = {
   version: 1;
   projectName: string;
   projectDomain: string;
+  projectLogoUrl?: string | null;
   rangeLabel: string;
   fromDate: string; // YYYY-MM-DD
   toDate: string;
