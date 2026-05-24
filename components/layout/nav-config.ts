@@ -1,6 +1,7 @@
 import {
   FileText,
   FolderKanban,
+  HelpCircle,
   LayoutDashboard,
   Settings,
   ShieldCheck,
@@ -19,5 +20,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Projects", href: "/projects", icon: FolderKanban },
   { label: "Templates", href: "/settings/templates", icon: FileText },
   { label: "Users", href: "/settings/users", icon: ShieldCheck, adminOnly: true },
+  { label: "Help", href: "/help", icon: HelpCircle },
   { label: "Settings", href: "/settings", icon: Settings },
 ];

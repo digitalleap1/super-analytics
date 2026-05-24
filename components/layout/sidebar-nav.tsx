@@ -27,10 +27,12 @@ export function SidebarNav({ onNavigate, isAdmin = false }: Props) {
                 ? pathname.startsWith("/settings/templates")
                 : item.href === "/settings/users"
                   ? pathname.startsWith("/settings/users")
-                  : item.href === "/settings"
-                    ? pathname === "/settings" ||
-                      pathname.startsWith("/settings/workspace")
-                    : pathname.startsWith(item.href);
+                  : item.href === "/help"
+                    ? pathname === "/help"
+                    : item.href === "/settings"
+                      ? pathname === "/settings" ||
+                        pathname.startsWith("/settings/workspace")
+                      : pathname.startsWith(item.href);
         const Icon = item.icon;
         return (
           <Link
