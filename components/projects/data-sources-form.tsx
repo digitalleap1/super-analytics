@@ -49,9 +49,12 @@ export function DataSourcesForm({ projectId, initial }: Props) {
     let cancelled = false;
     (async () => {
       try {
+        // Project-scoped endpoints first — these use the project's own Google
+        // connection if one's been set up; otherwise they fall back to the
+        // viewing user's personal connection.
         const [sitesRes, propsRes] = await Promise.all([
-          fetch("/api/integrations/google/sites"),
-          fetch("/api/integrations/google/ga4-properties"),
+          fetch(`/api/projects/${projectId}/integrations/sites`),
+          fetch(`/api/projects/${projectId}/integrations/ga4-properties`),
         ]);
         if (!sitesRes.ok || !propsRes.ok) {
           throw new Error("Could not load Google data sources");

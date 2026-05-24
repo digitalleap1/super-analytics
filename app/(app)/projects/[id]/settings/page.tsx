@@ -8,6 +8,7 @@ import { isWorkspaceAdmin } from "@/lib/access";
 import { EditProjectForm } from "@/components/projects/edit-project-form";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
 import { DataSourcesForm } from "@/components/projects/data-sources-form";
+import { ProjectGoogleConnect } from "@/components/projects/project-google-connect";
 import { ProjectTemplatePicker } from "@/components/projects/project-template-picker";
 import { TeamAccessSection } from "@/components/projects/team-access-section";
 import { Separator } from "@/components/ui/separator";
@@ -28,10 +29,16 @@ export default async function ProjectSettingsPage({
 }) {
   const { user, workspace, project } = await requireProject(params.id);
 
-  const googleAccount = await prisma.account.findFirst({
-    where: { userId: user.id, provider: "google" },
-    select: { id: true },
-  });
+  const [userGoogleAccount, projectGoogleAccount] = await Promise.all([
+    prisma.account.findFirst({
+      where: { userId: user.id, provider: "google" },
+      select: { id: true },
+    }),
+    prisma.projectAccount.findUnique({
+      where: { projectId: project.id },
+      select: { email: true, connectedAt: true },
+    }),
+  ]);
 
   await ensureWorkspaceDefaultTemplate(workspace.id);
   const [templates, allMemberships, projectMembers] = await Promise.all([
@@ -102,7 +109,21 @@ export default async function ProjectSettingsPage({
         <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
           Data sources
         </h2>
-        {googleAccount ? (
+        <ProjectGoogleConnect
+          projectId={project.id}
+          connection={
+            projectGoogleAccount
+              ? {
+                  email: projectGoogleAccount.email,
+                  connectedAt: projectGoogleAccount.connectedAt
+                    .toISOString()
+                    .slice(0, 10),
+                }
+              : null
+          }
+          canManage={canManageTeam}
+        />
+        {projectGoogleAccount || userGoogleAccount ? (
           <DataSourcesForm
             projectId={project.id}
             initial={{
@@ -112,11 +133,12 @@ export default async function ProjectSettingsPage({
           />
         ) : (
           <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-            Connect your Google account in{" "}
+            Connect a Google account above for this specific project (or
+            your personal Google in{" "}
             <a href="/settings" className="text-primary hover:underline">
               account settings
-            </a>{" "}
-            to pick a Search Console site and GA4 property.
+            </a>
+            ) to pick a Search Console site and GA4 property.
           </div>
         )}
       </section>

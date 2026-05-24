@@ -6,6 +6,6 @@ import { listGscSites } from "@/lib/google/gsc";
 export async function GET() {
   const { user, response } = await getApiUser();
   if (!user) return response;
-  const sites = await listGscSites(user.id);
+  const sites = await listGscSites({ userId: user.id });
   return NextResponse.json({ sites });
 }

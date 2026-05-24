@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 
 import { getValidGoogleAccessToken } from "./tokens";
+import { resolveGoogleAccessToken } from "./project-tokens";
 import { stubGa4Channels, stubGa4Overview, stubGa4Properties } from "./stub";
 import type {
   Ga4ChannelsResult,
@@ -40,7 +41,10 @@ export async function getGa4Overview(opts: FetchOpts): Promise<Ga4Overview> {
   const stubSeed = `${opts.projectId}`;
   if (!opts.propertyId) return stubGa4Overview(stubSeed, opts.from, opts.to);
 
-  const token = await getValidGoogleAccessToken(opts.userId);
+  const token = await resolveGoogleAccessToken({
+    projectId: opts.projectId,
+    userId: opts.userId,
+  });
   if (!token) return stubGa4Overview(stubSeed, opts.from, opts.to);
 
   try {
@@ -76,7 +80,10 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
   if (!opts.propertyId) {
     return { rows: stubGa4Channels(stubSeed, opts.from, opts.to), source: "stub" };
   }
-  const token = await getValidGoogleAccessToken(opts.userId);
+  const token = await resolveGoogleAccessToken({
+    projectId: opts.projectId,
+    userId: opts.userId,
+  });
   if (!token) {
     return { rows: stubGa4Channels(stubSeed, opts.from, opts.to), source: "stub" };
   }
@@ -117,19 +124,23 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
   }
 }
 
-export async function listGa4Properties(
-  userId: string,
-): Promise<Ga4PropertyListItem[]> {
-  const token = await getValidGoogleAccessToken(userId);
-  if (!token) return stubGa4Properties(userId);
+export async function listGa4Properties(opts: {
+  userId: string;
+  projectId?: string | null;
+}): Promise<Ga4PropertyListItem[]> {
+  const token = await resolveGoogleAccessToken({
+    projectId: opts.projectId ?? null,
+    userId: opts.userId,
+  });
+  const stubSeed = opts.projectId ?? opts.userId;
+  if (!token) return stubGa4Properties(stubSeed);
 
   try {
-    // Admin API is needed for property listing; minimal call via REST
     const res = await fetch(
       "https://analyticsadmin.googleapis.com/v1beta/accountSummaries",
       { headers: { Authorization: `Bearer ${token}` } },
     );
-    if (!res.ok) return stubGa4Properties(userId);
+    if (!res.ok) return stubGa4Properties(stubSeed);
     const json = (await res.json()) as {
       accountSummaries?: Array<{
         displayName?: string;
@@ -148,8 +159,8 @@ export async function listGa4Properties(
         });
       }
     }
-    return out.length ? out : stubGa4Properties(userId);
+    return out.length ? out : stubGa4Properties(stubSeed);
   } catch {
-    return stubGa4Properties(userId);
+    return stubGa4Properties(stubSeed);
   }
 }

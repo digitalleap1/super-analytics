@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 
 import { getValidGoogleAccessToken } from "./tokens";
+import { resolveGoogleAccessToken } from "./project-tokens";
 import {
   stubGscOverview,
   stubGscPages,
@@ -36,7 +37,10 @@ export async function getGscOverview(opts: FetchOpts): Promise<GscOverview> {
   const stubSeed = `${opts.projectId}`;
   if (!opts.siteUrl) return stubGscOverview(stubSeed, opts.from, opts.to);
 
-  const token = await getValidGoogleAccessToken(opts.userId);
+  const token = await resolveGoogleAccessToken({
+    projectId: opts.projectId,
+    userId: opts.userId,
+  });
   if (!token) return stubGscOverview(stubSeed, opts.from, opts.to);
 
   try {
@@ -86,7 +90,10 @@ export async function getGscQueries(opts: FetchOpts): Promise<GscQueriesResult> 
   const stubSeed = `${opts.projectId}`;
   if (!opts.siteUrl) return { rows: stubGscQueries(stubSeed), source: "stub" };
 
-  const token = await getValidGoogleAccessToken(opts.userId);
+  const token = await resolveGoogleAccessToken({
+    projectId: opts.projectId,
+    userId: opts.userId,
+  });
   if (!token) return { rows: stubGscQueries(stubSeed), source: "stub" };
 
   try {
@@ -120,7 +127,10 @@ export async function getGscPages(
   if (!opts.siteUrl) {
     return { rows: stubGscPages(stubSeed, opts.domain), source: "stub" };
   }
-  const token = await getValidGoogleAccessToken(opts.userId);
+  const token = await resolveGoogleAccessToken({
+    projectId: opts.projectId,
+    userId: opts.userId,
+  });
   if (!token) {
     return { rows: stubGscPages(stubSeed, opts.domain), source: "stub" };
   }
@@ -149,9 +159,16 @@ export async function getGscPages(
   }
 }
 
-export async function listGscSites(userId: string): Promise<GscSiteListItem[]> {
-  const token = await getValidGoogleAccessToken(userId);
-  if (!token) return stubGscSites(userId);
+export async function listGscSites(opts: {
+  userId: string;
+  projectId?: string | null;
+}): Promise<GscSiteListItem[]> {
+  const token = await resolveGoogleAccessToken({
+    projectId: opts.projectId ?? null,
+    userId: opts.userId,
+  });
+  const stubSeed = opts.projectId ?? opts.userId;
+  if (!token) return stubGscSites(stubSeed);
   try {
     const sc = client(token);
     const res = await sc.sites.list();
@@ -160,7 +177,7 @@ export async function listGscSites(userId: string): Promise<GscSiteListItem[]> {
       permissionLevel: s.permissionLevel ?? "unknown",
     }));
   } catch {
-    return stubGscSites(userId);
+    return stubGscSites(stubSeed);
   }
 }
 
@@ -179,7 +196,10 @@ export async function getKeywordDaily(opts: {
     const { stubKeywordDaily } = await import("./stub");
     return stubKeywordDaily(stubSeed, opts.query, opts.from, opts.to);
   }
-  const token = await getValidGoogleAccessToken(opts.userId);
+  const token = await resolveGoogleAccessToken({
+    projectId: opts.projectId,
+    userId: opts.userId,
+  });
   if (!token) {
     const { stubKeywordDaily } = await import("./stub");
     return stubKeywordDaily(stubSeed, opts.query, opts.from, opts.to);
