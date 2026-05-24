@@ -67,8 +67,17 @@ export async function withCache<T>(
 ): Promise<T> {
   const cacheKey = buildCacheKey(type, keyParts);
   const cached = await readCache<T>(projectId, cacheKey);
-  if (cached) return cached;
+  // Treat a cached stub as a cache miss. Stubs were poisoning the cache after
+  // a project was created but before Google was connected — re-fetch every
+  // time until we get live data, then cache that.
+  if (cached && (cached as { source?: string })?.source !== "stub") return cached;
   const fresh = await loader();
-  await writeCache(projectId, cacheKey, type, fresh);
+  if ((fresh as { source?: string })?.source !== "stub") {
+    await writeCache(projectId, cacheKey, type, fresh);
+  }
   return fresh;
+}
+
+export async function clearProjectCache(projectId: string): Promise<void> {
+  await prisma.reportCache.deleteMany({ where: { projectId } });
 }

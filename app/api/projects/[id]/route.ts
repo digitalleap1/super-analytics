@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getApiProject } from "@/lib/api-auth";
+import { clearProjectCache } from "@/lib/cache";
 import { prisma } from "@/lib/prisma";
 import { projectUpdateSchema } from "@/lib/validators";
 
@@ -54,6 +55,15 @@ export async function PATCH(
       }),
     },
   });
+
+  // Connection changed → drop cached GSC/GA4 payloads so the next page render
+  // refetches against the new site/property instead of showing stale data.
+  const connectionChanged =
+    parsed.data.gscSiteUrl !== undefined ||
+    parsed.data.ga4PropertyId !== undefined;
+  if (connectionChanged) {
+    await clearProjectCache(project.id);
+  }
 
   return NextResponse.json({ project: updated });
 }
