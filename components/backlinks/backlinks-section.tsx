@@ -43,7 +43,7 @@ export function BacklinksSection({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_1.2fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_1.2fr] print:!grid-cols-1">
         <div>
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Categories in range

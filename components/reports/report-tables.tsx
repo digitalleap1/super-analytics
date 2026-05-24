@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CsvExportButton } from "./csv-export-button";
+import { PrintTableButton } from "./print-table-button";
 import { SortableTable } from "./sortable-table";
 import { formatNumber, formatPercent, formatPosition } from "@/lib/utils";
 import type {
@@ -15,6 +16,7 @@ import type {
 
 type Props = {
   projectName: string;
+  rangeLabel: string;
   queries: GscQueryRow[];
   pages: GscPageRow[];
   channels: Ga4ChannelRow[];
@@ -26,6 +28,7 @@ type Props = {
 
 export function ReportTables({
   projectName,
+  rangeLabel,
   queries,
   pages,
   channels,
@@ -171,7 +174,7 @@ export function ReportTables({
           <h3 className="hidden text-sm font-semibold print:block">
             Top queries
           </h3>
-          <div className="flex justify-end print:hidden">
+          <div className="flex justify-end gap-2 print:hidden">
             <CsvExportButton
               filename={`${projectName}-queries`}
               rows={queries as unknown as Record<string, unknown>[]}
@@ -181,6 +184,27 @@ export function ReportTables({
                 { key: "impressions", header: "Impressions" },
                 { key: "ctr", header: "CTR" },
                 { key: "position", header: "Avg Position" },
+              ]}
+            />
+            <PrintTableButton
+              title="Top queries"
+              projectName={projectName}
+              rangeLabel={rangeLabel}
+              rows={
+                queries.slice(0, rowLimit).map((r) => ({
+                  query: r.query,
+                  clicks: formatNumber(r.clicks),
+                  impressions: formatNumber(r.impressions),
+                  ctr: formatPercent(r.ctr),
+                  position: formatPosition(r.position),
+                })) as Record<string, unknown>[]
+              }
+              columns={[
+                { key: "query", header: "Query" },
+                { key: "clicks", header: "Clicks" },
+                { key: "impressions", header: "Impressions" },
+                { key: "ctr", header: "CTR" },
+                { key: "position", header: "Avg position" },
               ]}
             />
           </div>
@@ -201,7 +225,7 @@ export function ReportTables({
           <h3 className="hidden text-sm font-semibold print:block">
             Top pages
           </h3>
-          <div className="flex justify-end print:hidden">
+          <div className="flex justify-end gap-2 print:hidden">
             <CsvExportButton
               filename={`${projectName}-pages`}
               rows={pages as unknown as Record<string, unknown>[]}
@@ -211,6 +235,27 @@ export function ReportTables({
                 { key: "impressions", header: "Impressions" },
                 { key: "ctr", header: "CTR" },
                 { key: "position", header: "Avg Position" },
+              ]}
+            />
+            <PrintTableButton
+              title="Top pages"
+              projectName={projectName}
+              rangeLabel={rangeLabel}
+              rows={
+                pages.slice(0, rowLimit).map((r) => ({
+                  page: r.page.replace(/^https?:\/\//, ""),
+                  clicks: formatNumber(r.clicks),
+                  impressions: formatNumber(r.impressions),
+                  ctr: formatPercent(r.ctr),
+                  position: formatPosition(r.position),
+                })) as Record<string, unknown>[]
+              }
+              columns={[
+                { key: "page", header: "Page" },
+                { key: "clicks", header: "Clicks" },
+                { key: "impressions", header: "Impressions" },
+                { key: "ctr", header: "CTR" },
+                { key: "position", header: "Avg position" },
               ]}
             />
           </div>
@@ -231,10 +276,35 @@ export function ReportTables({
           <h3 className="hidden text-sm font-semibold print:block">
             GA4 channels
           </h3>
-          <div className="flex justify-end print:hidden">
+          <div className="flex justify-end gap-2 print:hidden">
             <CsvExportButton
               filename={`${projectName}-channels`}
               rows={channels as unknown as Record<string, unknown>[]}
+              columns={[
+                { key: "channel", header: "Channel" },
+                { key: "sessions", header: "Sessions" },
+                { key: "totalUsers", header: "Users" },
+                { key: "engagementRate", header: "Engagement" },
+                { key: "keyEvents", header: "Key events" },
+                { key: "eventCount", header: "Events" },
+                { key: "conversions", header: "Conversions" },
+              ]}
+            />
+            <PrintTableButton
+              title="GA4 channels"
+              projectName={projectName}
+              rangeLabel={rangeLabel}
+              rows={
+                channels.slice(0, rowLimit).map((r) => ({
+                  channel: r.channel,
+                  sessions: formatNumber(r.sessions),
+                  totalUsers: formatNumber(r.totalUsers),
+                  engagementRate: formatPercent(r.engagementRate),
+                  keyEvents: formatNumber(r.keyEvents),
+                  eventCount: formatNumber(r.eventCount),
+                  conversions: formatNumber(r.conversions),
+                })) as Record<string, unknown>[]
+              }
               columns={[
                 { key: "channel", header: "Channel" },
                 { key: "sessions", header: "Sessions" },

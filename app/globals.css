@@ -68,6 +68,11 @@
   }
 }
 
+@page {
+  size: A4;
+  margin: 1.4cm 1.2cm;
+}
+
 @media print {
   aside,
   header,
@@ -82,6 +87,38 @@
   }
   [role="tablist"] {
     display: none !important;
+  }
+  /* Stop sections, cards and tables from being split across page boundaries. */
+  section,
+  .rounded-xl,
+  .rounded-lg,
+  .rounded-md {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  table {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+  /* If a table DOES wrap onto a second page, repeat the header on each page. */
+  thead {
+    display: table-header-group;
+  }
+  tfoot {
+    display: table-footer-group;
+  }
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Recharts: stop labels from being clipped against narrow chart containers
+   * and force a sensible min height so charts don't collapse to nothing. */
+  .recharts-wrapper,
+  .recharts-surface {
+    overflow: visible !important;
+  }
+  .recharts-responsive-container {
+    min-height: 220px !important;
   }
   body {
     background: #ffffff !important;

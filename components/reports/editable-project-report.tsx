@@ -616,7 +616,12 @@ export function EditableProjectReport(props: Props) {
         {/* Charts section */}
         {cfg.sections.chartClicksImpressions ||
         cfg.sections.chartPositionTrend ? (
-          <div className={cn("grid grid-cols-1 lg:grid-cols-2", density.gap)}>
+          <div
+            className={cn(
+              "grid grid-cols-1 lg:grid-cols-2 print:!grid-cols-1",
+              density.gap,
+            )}
+          >
             {cfg.sections.chartClicksImpressions ? (
               <Card className={density.card}>
                 <SectionHeader
@@ -713,6 +718,7 @@ export function EditableProjectReport(props: Props) {
             />
             <ReportTables
               projectName={props.project.name}
+              rangeLabel={`${props.reportPeriodLabel} · ${props.rangeLabel}`}
               queries={cfg.sections.topQueries ? props.queries : []}
               pages={cfg.sections.topPages ? props.pages : []}
               channels={cfg.sections.ga4Channels ? props.channels : []}
