@@ -53,9 +53,11 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "better-sqlite3": "^12.10.0",
     "dotenv": "^17.4.2",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
@@ -72,7 +74,8 @@
       "prisma",
       "unrs-resolver",
       "esbuild",
-      "sharp"
+      "sharp",
+      "better-sqlite3"
     ]
   }
 }
