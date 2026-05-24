@@ -35,17 +35,26 @@ export async function getApiWorkspace(): Promise<
 export async function getApiProject(projectId: string) {
   const { user, response } = await getApiUser();
   if (!user) return { user: null, project: null, response };
-  const project = await prisma.project.findFirst({
-    where: {
-      id: projectId,
-      workspace: { memberships: { some: { userId: user.id } } },
-    },
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
   });
   if (!project) {
     return {
       user,
       project: null,
       response: NextResponse.json({ error: "Not found" }, { status: 404 }),
+    };
+  }
+  const { canUserAccessProject } = await import("@/lib/access");
+  const ok = await canUserAccessProject({
+    userId: user.id,
+    projectId: project.id,
+  });
+  if (!ok) {
+    return {
+      user,
+      project: null,
+      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
     };
   }
   return { user, project, response: null };

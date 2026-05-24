@@ -1,6 +1,6 @@
 import { LayoutDashboard } from "lucide-react";
 
-import { listProjectsForWorkspace, requireWorkspace } from "@/lib/projects";
+import { listAccessibleProjectsForUser, requireWorkspace } from "@/lib/projects";
 import { NewProjectCard, ProjectCard } from "@/components/projects/project-card";
 import { EmptyProjectsState } from "@/components/projects/empty-state";
 import { presetRange, ymd } from "@/lib/date-ranges";
@@ -14,7 +14,10 @@ export const metadata = {
 
 export default async function DashboardPage() {
   const { user, workspace } = await requireWorkspace();
-  const projects = await listProjectsForWorkspace(workspace.id);
+  const projects = await listAccessibleProjectsForUser({
+    userId: user.id,
+    workspaceId: workspace.id,
+  });
 
   // Pull last-28-days stats for every connected project in parallel. Each
   // fetch goes through ReportCache (6h TTL), so the dashboard pays the

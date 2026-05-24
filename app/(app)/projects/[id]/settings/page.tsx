@@ -4,10 +4,12 @@ import { ChevronLeft } from "lucide-react";
 import { requireProject } from "@/lib/projects";
 import { prisma } from "@/lib/prisma";
 import { ensureWorkspaceDefaultTemplate } from "@/lib/templates";
+import { isWorkspaceAdmin } from "@/lib/access";
 import { EditProjectForm } from "@/components/projects/edit-project-form";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
 import { DataSourcesForm } from "@/components/projects/data-sources-form";
 import { ProjectTemplatePicker } from "@/components/projects/project-template-picker";
+import { TeamAccessSection } from "@/components/projects/team-access-section";
 import { Separator } from "@/components/ui/separator";
 
 export async function generateMetadata({
@@ -32,11 +34,42 @@ export default async function ProjectSettingsPage({
   });
 
   await ensureWorkspaceDefaultTemplate(workspace.id);
-  const templates = await prisma.reportTemplate.findMany({
-    where: { workspaceId: workspace.id },
-    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
-    select: { id: true, name: true, isDefault: true },
-  });
+  const [templates, allMemberships, projectMembers] = await Promise.all([
+    prisma.reportTemplate.findMany({
+      where: { workspaceId: workspace.id },
+      orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+      select: { id: true, name: true, isDefault: true },
+    }),
+    prisma.membership.findMany({
+      where: { workspaceId: workspace.id },
+      include: {
+        user: { select: { id: true, email: true, name: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.projectMember.findMany({
+      where: { projectId: project.id },
+      include: {
+        user: { select: { id: true, email: true, name: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
+
+  const adminUsers = allMemberships.filter((m) => isWorkspaceAdmin(m.role));
+  const memberUserIds = new Set(projectMembers.map((pm) => pm.userId));
+  const adminUserIds = new Set(adminUsers.map((m) => m.user.id));
+
+  const candidates = allMemberships
+    .filter((m) => !adminUserIds.has(m.user.id) && !memberUserIds.has(m.user.id))
+    .map((m) => ({
+      userId: m.user.id,
+      email: m.user.email,
+      name: m.user.name,
+      role: m.role,
+    }));
+
+  const canManageTeam = isWorkspaceAdmin(workspace.role);
 
   return (
     <div className="space-y-8">
@@ -86,6 +119,31 @@ export default async function ProjectSettingsPage({
             to pick a Search Console site and GA4 property.
           </div>
         )}
+      </section>
+
+      <Separator />
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          Team access
+        </h2>
+        <TeamAccessSection
+          projectId={project.id}
+          members={projectMembers.map((pm) => ({
+            id: pm.id,
+            userId: pm.user.id,
+            email: pm.user.email,
+            name: pm.user.name,
+            role: pm.role,
+          }))}
+          implicitAdmins={adminUsers.map((m) => ({
+            userId: m.user.id,
+            email: m.user.email,
+            name: m.user.name,
+          }))}
+          candidates={candidates}
+          canManage={canManageTeam}
+        />
       </section>
 
       <Separator />

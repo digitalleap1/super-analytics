@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, FileText, Users } from "lucide-react";
+import { ArrowRight, FileText, ShieldCheck, Users } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { GoogleConnect } from "@/components/settings/google-connect";
 import { getCurrentWorkspaceForUser } from "@/lib/workspaces";
+import { isWorkspaceAdmin } from "@/lib/access";
 
 export const metadata = {
   title: "Settings — SEO Dashboard",
@@ -114,6 +115,26 @@ export default async function SettingsPage({
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
           </Link>
+          {isWorkspaceAdmin(workspace.role) ? (
+            <Link
+              href="/settings/users"
+              className="group flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Users &amp; access</p>
+                  <p className="text-xs text-muted-foreground">
+                    Create teammates directly with email + password, assign
+                    project access
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          ) : null}
           <Link
             href="/settings/templates"
             className="group flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
