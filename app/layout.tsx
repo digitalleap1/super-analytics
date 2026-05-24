@@ -6,7 +6,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "SEO Dashboard",
+  title: "Super Analytics",
   description: "Multi-tenant SEO reporting for agencies",
 };
 

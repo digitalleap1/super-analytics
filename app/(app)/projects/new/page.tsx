@@ -4,7 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { NewProjectWizard } from "@/components/projects/new-project-wizard";
 
 export const metadata = {
-  title: "New project — SEO Dashboard",
+  title: "New project — Super Analytics",
 };
 
 export default function NewProjectPage() {

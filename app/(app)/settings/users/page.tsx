@@ -10,7 +10,7 @@ import { CreateUserForm } from "@/components/settings/create-user-form";
 import { UserRowActions } from "@/components/settings/user-row-actions";
 
 export const metadata = {
-  title: "Users — SEO Dashboard",
+  title: "Users — Super Analytics",
 };
 
 function roleColor(role: string): string {

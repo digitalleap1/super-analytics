@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { TemplateRowActions } from "@/components/templates/template-row-actions";
 
 export const metadata = {
-  title: "Report templates — SEO Dashboard",
+  title: "Report templates — Super Analytics",
 };
 
 export default async function TemplatesPage() {

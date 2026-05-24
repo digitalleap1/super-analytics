@@ -8,7 +8,7 @@ import { InviteSection } from "@/components/workspace/invite-section";
 import { MembersList } from "@/components/workspace/members-list";
 
 export const metadata = {
-  title: "Workspace — SEO Dashboard",
+  title: "Workspace — Super Analytics",
 };
 
 export default async function WorkspaceSettingsPage() {

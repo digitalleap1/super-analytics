@@ -13,7 +13,7 @@ export async function generateMetadata({
 }: {
   params: { id: string; reportId: string };
 }) {
-  return { title: `Saved report — SEO Dashboard` };
+  return { title: `Saved report — Super Analytics` };
 }
 
 export default async function ViewSavedReportPage({

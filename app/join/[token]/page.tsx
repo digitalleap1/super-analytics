@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BarChart3 } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { lookupInvite, redeemInvite } from "@/lib/invites";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
-  title: "Join workspace — SEO Dashboard",
+  title: "Join workspace — Super Analytics",
 };
 
 function MessageCard({
@@ -23,7 +23,7 @@ function MessageCard({
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-md space-y-4 rounded-lg border bg-card p-8 text-center shadow-sm">
         <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <BarChart3 className="h-5 w-5" />
+          <TrendingUp className="h-5 w-5" />
         </div>
         <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
         <p className="text-sm text-muted-foreground">{body}</p>

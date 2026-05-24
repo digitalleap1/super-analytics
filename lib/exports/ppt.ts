@@ -28,7 +28,7 @@ export async function exportElementToPpt(opts: ExportPptOptions): Promise<void> 
   const pptx = new pptxgen();
   pptx.layout = "LAYOUT_WIDE";
   pptx.title = `${opts.projectName} — ${opts.periodLabel}`;
-  pptx.author = "SEO Dashboard";
+  pptx.author = "Super Analytics";
 
   // --- Title slide -----------------------------------------------------------
   const title = pptx.addSlide();

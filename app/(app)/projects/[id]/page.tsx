@@ -20,7 +20,7 @@ export async function generateMetadata({
   params: { id: string };
 }) {
   const { project } = await requireProject(params.id);
-  return { title: `${project.name} — SEO Dashboard` };
+  return { title: `${project.name} — Super Analytics` };
 }
 
 export default async function ProjectPage({

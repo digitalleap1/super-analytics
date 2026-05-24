@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { BarChart3, Menu } from "lucide-react";
+import { TrendingUp, Menu } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,8 +37,8 @@ export function MobileNav({ user, isAdmin = false }: MobileNavProps) {
             className="flex items-center gap-2 font-semibold"
             onClick={() => setOpen(false)}
           >
-            <BarChart3 className="h-5 w-5 text-primary" />
-            <span>SEO Dashboard</span>
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <span>Super Analytics</span>
           </Link>
         </div>
         <div className="py-4">

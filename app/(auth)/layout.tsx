@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3 } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 
 export default function AuthLayout({
   children,
@@ -14,8 +14,8 @@ export default function AuthLayout({
           href="/"
           className="relative z-20 flex items-center text-lg font-semibold"
         >
-          <BarChart3 className="mr-2 h-6 w-6" />
-          SEO Dashboard
+          <TrendingUp className="mr-2 h-6 w-6" />
+          Super Analytics
         </Link>
         <div className="relative z-20 mt-auto space-y-4">
           <blockquote className="space-y-2">

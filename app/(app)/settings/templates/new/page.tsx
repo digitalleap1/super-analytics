@@ -6,7 +6,7 @@ import { DEFAULT_TEMPLATE_CONFIG } from "@/lib/templates";
 import { TemplateEditor } from "@/components/templates/template-editor";
 
 export const metadata = {
-  title: "New template — SEO Dashboard",
+  title: "New template — Super Analytics",
 };
 
 export default async function NewTemplatePage() {

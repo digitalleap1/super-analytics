@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ProjectsTable, type ProjectRow } from "@/components/projects/projects-table";
 
 export const metadata = {
-  title: "Projects — SEO Dashboard",
+  title: "Projects — Super Analytics",
 };
 
 function ymd(d: Date): string {

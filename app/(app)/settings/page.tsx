@@ -10,7 +10,7 @@ import { getCurrentWorkspaceForUser } from "@/lib/workspaces";
 import { isWorkspaceAdmin } from "@/lib/access";
 
 export const metadata = {
-  title: "Settings — SEO Dashboard",
+  title: "Settings — Super Analytics",
 };
 
 export default async function SettingsPage({

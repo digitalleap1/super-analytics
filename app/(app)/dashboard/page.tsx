@@ -9,7 +9,7 @@ import { getGscOverview } from "@/lib/google/gsc";
 import { getGa4Overview } from "@/lib/google/ga4";
 
 export const metadata = {
-  title: "Dashboard — SEO Dashboard",
+  title: "Dashboard — Super Analytics",
 };
 
 export default async function DashboardPage() {

@@ -11,7 +11,7 @@ import { TemplateEditor } from "@/components/templates/template-editor";
 import { ApplyToProjects } from "@/components/templates/apply-to-projects";
 
 export const metadata = {
-  title: "Edit template — SEO Dashboard",
+  title: "Edit template — Super Analytics",
 };
 
 export default async function EditTemplatePage({

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3 } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 
 import { SidebarNav } from "./sidebar-nav";
 import { UserMenu } from "./user-menu";
@@ -21,11 +21,11 @@ export function Sidebar({ user, workspaceName, isAdmin }: SidebarProps) {
           className="relative flex h-full items-center gap-2.5 px-5"
         >
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-md shadow-primary/20">
-            <BarChart3 className="h-5 w-5" />
+            <TrendingUp className="h-5 w-5" />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-bold tracking-tight leading-tight">
-              SEO Dashboard
+              Super Analytics
             </p>
             <p className="truncate text-[10px] text-muted-foreground">
               {workspaceName}

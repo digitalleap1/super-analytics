@@ -3,7 +3,7 @@ import Link from "next/link";
 import { RegisterForm } from "@/components/auth/register-form";
 
 export const metadata = {
-  title: "Register — SEO Dashboard",
+  title: "Register — Super Analytics",
 };
 
 export default function RegisterPage() {
