@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/reports/date-range-picker";
-import { DownloadPdfButton } from "@/components/reports/download-pdf-button";
+import { ExportMenu } from "@/components/reports/export-menu";
 import { KpiCard } from "@/components/reports/kpi-card";
 import { ClicksImpressionsChart } from "@/components/charts/clicks-impressions-chart";
 import { PositionTrendChart } from "@/components/charts/position-trend-chart";
@@ -384,9 +384,14 @@ export function EditableProjectReport(props: Props) {
               ) : (
                 <DateRangePicker />
               )}
-              <DownloadPdfButton
-                filename={props.pdfFilename}
+              <ExportMenu
                 targetId="report-pdf"
+                filename={props.pdfFilename}
+                projectName={props.project.name}
+                projectDomain={props.project.domain}
+                periodLabel={props.reportPeriodLabel}
+                rangeLabel={props.rangeLabel}
+                branding={cfg.branding.headerText}
               />
               {props.mode !== "snapshot" ? (
                 <>
@@ -553,7 +558,7 @@ export function EditableProjectReport(props: Props) {
 
         {/* KPI section */}
         {cfg.sections.kpis ? (
-          <section>
+          <section data-pptx-slide>
             <SectionHeader
               title="Key metrics"
               editing={editing}
@@ -617,6 +622,7 @@ export function EditableProjectReport(props: Props) {
         {cfg.sections.chartClicksImpressions ||
         cfg.sections.chartPositionTrend ? (
           <div
+            data-pptx-slide
             className={cn(
               "grid grid-cols-1 lg:grid-cols-2 print:!grid-cols-1",
               density.gap,
@@ -682,7 +688,7 @@ export function EditableProjectReport(props: Props) {
 
         {/* Keywords */}
         {cfg.sections.keywords ? (
-          <section>
+          <section data-pptx-slide>
             <SectionHeader
               title=""
               editing={editing}
@@ -705,7 +711,7 @@ export function EditableProjectReport(props: Props) {
 
         {/* Report tables */}
         {showAnyTable ? (
-          <section>
+          <section data-pptx-slide>
             <SectionHeader
               title="Search & analytics tables"
               editing={editing}
@@ -741,7 +747,7 @@ export function EditableProjectReport(props: Props) {
 
         {/* Backlinks (placed after the GSC/GA4 tables) */}
         {cfg.sections.backlinks ? (
-          <section>
+          <section data-pptx-slide>
             {editing ? (
               <SectionHeader
                 title=""
