@@ -3,12 +3,14 @@ import { z } from "zod";
 
 import { getApiProject } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+import { generateShareToken } from "@/lib/saved-reports";
 
 const createSchema = z.object({
   name: z.string().min(1).max(200),
   snapshot: z.string().min(2), // pre-stringified JSON
   fromDate: z.string().min(8),
   toDate: z.string().min(8),
+  share: z.boolean().optional().default(false), // create+share in one shot
 });
 
 export async function GET(
@@ -72,6 +74,8 @@ export async function POST(
     return NextResponse.json({ error: "Invalid dates" }, { status: 400 });
   }
 
+  const shareToken = parsed.data.share ? generateShareToken() : null;
+
   const created = await prisma.savedReport.create({
     data: {
       projectId: project.id,
@@ -80,8 +84,19 @@ export async function POST(
       toDate,
       snapshot: parsed.data.snapshot,
       createdById: user.id,
+      shareToken,
     },
-    select: { id: true, name: true, createdAt: true },
+    select: { id: true, name: true, createdAt: true, shareToken: true },
   });
-  return NextResponse.json({ report: created }, { status: 201 });
+
+  const baseUrl =
+    process.env.NEXTAUTH_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
+  const shareUrl = created.shareToken
+    ? `${baseUrl}/r/${created.shareToken}`
+    : null;
+
+  return NextResponse.json(
+    { report: created, shareUrl },
+    { status: 201 },
+  );
 }

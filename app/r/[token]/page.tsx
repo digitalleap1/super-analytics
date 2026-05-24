@@ -4,6 +4,7 @@ import { BarChart3 } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import { parseSnapshot } from "@/lib/saved-reports";
+import { reportPeriodLabel } from "@/lib/date-ranges";
 import { EditableProjectReport } from "@/components/reports/editable-project-report";
 
 export async function generateMetadata({
@@ -77,6 +78,10 @@ export default async function PublicReportPage({
           backlinkMonthly={snapshot.backlinkMonthly}
           fromDate={snapshot.fromDate}
           toDate={snapshot.toDate}
+          reportPeriodLabel={reportPeriodLabel({
+            from: new Date(snapshot.fromDate),
+            to: new Date(snapshot.toDate),
+          })}
           mode="snapshot"
           snapshotMeta={{
             name: saved.name,

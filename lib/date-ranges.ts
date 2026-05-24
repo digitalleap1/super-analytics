@@ -113,6 +113,19 @@ export function parseRangeFromSearchParams(sp: {
   };
 }
 
+// Friendly label for the kind of report based on the date range length.
+// Used in PDF headers so a client immediately sees "Monthly report" instead of
+// just a date span.
+export function reportPeriodLabel(range: DateRange): string {
+  const ms = range.to.getTime() - range.from.getTime();
+  const days = Math.round(ms / (1000 * 60 * 60 * 24)) + 1;
+  if (days <= 7) return "Weekly report";
+  if (days <= 14) return "Biweekly report";
+  if (days <= 31) return "Monthly report";
+  if (days <= 100) return "Quarterly report";
+  return "Custom date range report";
+}
+
 export function formatRangeLabel(range: DateRange): string {
   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
   const sameYear = range.from.getFullYear() === range.to.getFullYear();

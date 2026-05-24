@@ -4,6 +4,7 @@ import {
   formatRangeLabel,
   parseRangeFromSearchParams,
   previousPeriod,
+  reportPeriodLabel,
   ymd,
 } from "@/lib/date-ranges";
 import { withCache } from "@/lib/cache";
@@ -177,6 +178,7 @@ export default async function ProjectPage({
       backlinkMonthly={backlinkMonthly}
       fromDate={ymd(range.from)}
       toDate={ymd(range.to)}
+      reportPeriodLabel={reportPeriodLabel(range)}
       mode="live"
     />
   );

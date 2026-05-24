@@ -65,6 +65,7 @@ import type { KeywordRow } from "@/lib/keywords";
 import type { BacklinkMonthBucket, BacklinkRow } from "@/lib/backlinks";
 import { BacklinksSection } from "@/components/backlinks/backlinks-section";
 import { SaveReportDialog } from "@/components/reports/save-report-dialog";
+import { QuickShareButton } from "@/components/reports/quick-share-button";
 import type {
   Ga4ChannelRow,
   Ga4Overview,
@@ -99,6 +100,7 @@ type Props = {
   backlinkMonthly: BacklinkMonthBucket[];
   fromDate: string; // YYYY-MM-DD; used by the Save report dialog
   toDate: string;
+  reportPeriodLabel: string; // "Weekly report" / "Monthly report" / ...
   mode?: "live" | "snapshot";
   snapshotMeta?: {
     name: string;
@@ -388,6 +390,35 @@ export function EditableProjectReport(props: Props) {
               />
               {props.mode !== "snapshot" ? (
                 <>
+                  <QuickShareButton
+                    projectId={props.project.id}
+                    defaultName={`${props.project.name} — ${props.rangeLabel}`}
+                    fromDate={props.fromDate}
+                    toDate={props.toDate}
+                    buildSnapshot={() => ({
+                      version: 1,
+                      projectName: props.project.name,
+                      projectDomain: props.project.domain,
+                      rangeLabel: props.rangeLabel,
+                      fromDate: props.fromDate,
+                      toDate: props.toDate,
+                      compare: props.compare,
+                      isStub: props.isStub,
+                      pdfFilename: props.pdfFilename,
+                      config,
+                      template: props.template,
+                      overview: props.overview,
+                      prevOverview: props.prevOverview,
+                      ga4Overview: props.ga4Overview,
+                      prevGa4: props.prevGa4,
+                      queries: props.queries,
+                      pages: props.pages,
+                      channels: props.channels,
+                      keywords: props.keywords,
+                      backlinks: props.backlinks,
+                      backlinkMonthly: props.backlinkMonthly,
+                    })}
+                  />
                   <SaveReportDialog
                     projectId={props.project.id}
                     defaultName={`${props.project.name} — ${props.rangeLabel}`}
@@ -485,7 +516,10 @@ export function EditableProjectReport(props: Props) {
         className={cn("bg-background", density.gap, "space-y-6")}
       >
         <div className="hidden border-b pb-3 print:block">
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            {props.reportPeriodLabel}
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
             {props.project.name}
           </h1>
           <p className="text-sm text-muted-foreground">

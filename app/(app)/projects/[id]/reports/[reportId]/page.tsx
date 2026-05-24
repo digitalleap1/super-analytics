@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireProject } from "@/lib/projects";
 import { prisma } from "@/lib/prisma";
 import { parseSnapshot } from "@/lib/saved-reports";
+import { reportPeriodLabel } from "@/lib/date-ranges";
 import { EditableProjectReport } from "@/components/reports/editable-project-report";
 import { Card } from "@/components/ui/card";
 import { SavedReportShare } from "@/components/reports/saved-report-share";
@@ -72,6 +73,10 @@ export default async function ViewSavedReportPage({
         backlinkMonthly={snapshot.backlinkMonthly}
         fromDate={snapshot.fromDate}
         toDate={snapshot.toDate}
+        reportPeriodLabel={reportPeriodLabel({
+          from: new Date(snapshot.fromDate),
+          to: new Date(snapshot.toDate),
+        })}
         mode="snapshot"
         snapshotMeta={{
           name: saved.name,

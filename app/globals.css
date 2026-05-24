@@ -74,6 +74,15 @@
   .print\:hidden {
     display: none !important;
   }
+  /* Radix Tabs hides inactive panels via the `hidden` HTML attribute. Override
+   * so all panels stack in the printed report. */
+  [role="tabpanel"][hidden],
+  [role="tabpanel"][data-state="inactive"] {
+    display: block !important;
+  }
+  [role="tablist"] {
+    display: none !important;
+  }
   body {
     background: #ffffff !important;
     color: #192250 !important;

@@ -151,7 +151,7 @@ export function ReportTables({
 
   return (
     <Tabs defaultValue={defaultTab} className="space-y-2">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 print:hidden sm:flex-row sm:items-center sm:justify-between">
         <TabsList>
           {showQueries ? (
             <TabsTrigger value="queries">Top queries</TabsTrigger>
@@ -163,8 +163,15 @@ export function ReportTables({
         </TabsList>
       </div>
       {showQueries ? (
-        <TabsContent value="queries" className="space-y-2">
-          <div className="flex justify-end">
+        <TabsContent
+          value="queries"
+          forceMount
+          className="space-y-2 data-[state=inactive]:hidden print:!block print:space-y-2 print:[&]:!block"
+        >
+          <h3 className="hidden text-sm font-semibold print:block">
+            Top queries
+          </h3>
+          <div className="flex justify-end print:hidden">
             <CsvExportButton
               filename={`${projectName}-queries`}
               rows={queries as unknown as Record<string, unknown>[]}
@@ -180,14 +187,21 @@ export function ReportTables({
           <SortableTable
             columns={queryColumns}
             data={queries.slice(0, rowLimit)}
-            pageSize={Math.min(10, rowLimit)}
+            pageSize={rowLimit}
             emptyMessage="No queries in this range yet"
           />
         </TabsContent>
       ) : null}
       {showPages ? (
-        <TabsContent value="pages" className="space-y-2">
-          <div className="flex justify-end">
+        <TabsContent
+          value="pages"
+          forceMount
+          className="space-y-2 data-[state=inactive]:hidden print:!block print:mt-6 print:space-y-2 print:[&]:!block"
+        >
+          <h3 className="hidden text-sm font-semibold print:block">
+            Top pages
+          </h3>
+          <div className="flex justify-end print:hidden">
             <CsvExportButton
               filename={`${projectName}-pages`}
               rows={pages as unknown as Record<string, unknown>[]}
@@ -203,14 +217,21 @@ export function ReportTables({
           <SortableTable
             columns={pageColumns}
             data={pages.slice(0, rowLimit)}
-            pageSize={Math.min(10, rowLimit)}
+            pageSize={rowLimit}
             emptyMessage="No pages in this range yet"
           />
         </TabsContent>
       ) : null}
       {showChannels ? (
-        <TabsContent value="channels" className="space-y-2">
-          <div className="flex justify-end">
+        <TabsContent
+          value="channels"
+          forceMount
+          className="space-y-2 data-[state=inactive]:hidden print:!block print:mt-6 print:space-y-2 print:[&]:!block"
+        >
+          <h3 className="hidden text-sm font-semibold print:block">
+            GA4 channels
+          </h3>
+          <div className="flex justify-end print:hidden">
             <CsvExportButton
               filename={`${projectName}-channels`}
               rows={channels as unknown as Record<string, unknown>[]}
@@ -228,7 +249,7 @@ export function ReportTables({
           <SortableTable
             columns={channelColumns}
             data={channels.slice(0, rowLimit)}
-            pageSize={Math.min(10, rowLimit)}
+            pageSize={rowLimit}
             emptyMessage="No GA4 data in this range"
           />
         </TabsContent>
