@@ -8,11 +8,7 @@ import { EditableProjectReport } from "@/components/reports/editable-project-rep
 import { Card } from "@/components/ui/card";
 import { SavedReportShare } from "@/components/reports/saved-report-share";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { id: string; reportId: string };
-}) {
+export async function generateMetadata() {
   return { title: `Saved report — Super Analytics` };
 }
 
