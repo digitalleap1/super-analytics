@@ -123,23 +123,66 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
   }
 }
 
+export type Ga4PropertiesResult = {
+  properties: Ga4PropertyListItem[];
+  // "live" = these are the user's real GA4 properties.
+  // "stub" = we fell back to demo data; `error` explains why.
+  source: "live" | "stub";
+  error?: string;
+};
+
 export async function listGa4Properties(opts: {
   userId: string;
   projectId?: string | null;
-}): Promise<Ga4PropertyListItem[]> {
+}): Promise<Ga4PropertiesResult> {
   const token = await resolveGoogleAccessToken({
     projectId: opts.projectId ?? null,
     userId: opts.userId,
   });
   const stubSeed = opts.projectId ?? opts.userId;
-  if (!token) return stubGa4Properties(stubSeed);
+  if (!token) {
+    return {
+      properties: stubGa4Properties(stubSeed),
+      source: "stub",
+      error:
+        "Google isn't connected for this project yet — click 'Connect Google' above to authorise GA4 access.",
+    };
+  }
 
   try {
     const res = await fetch(
       "https://analyticsadmin.googleapis.com/v1beta/accountSummaries",
       { headers: { Authorization: `Bearer ${token}` } },
     );
-    if (!res.ok) return stubGa4Properties(stubSeed);
+    if (!res.ok) {
+      // Try to surface Google's actual error message so the user knows what to do.
+      let message = `Google Analytics Admin API returned ${res.status}`;
+      try {
+        const errBody = (await res.json()) as {
+          error?: { message?: string; status?: string };
+        };
+        if (errBody.error?.message) {
+          message = errBody.error.message;
+          // The Admin API needs to be explicitly enabled in the GCP console.
+          // Detect that specific case and rewrite the message.
+          if (
+            /api has not been used|disabled/i.test(message) ||
+            errBody.error.status === "PERMISSION_DENIED"
+          ) {
+            message =
+              "Google Analytics Admin API isn't enabled for this project. Go to Google Cloud Console → APIs & Services → Library, search for 'Google Analytics Admin API', and click Enable. Then refresh this page.";
+          }
+        }
+      } catch {
+        /* keep the generic message */
+      }
+      console.error("[ga4] listGa4Properties failed:", res.status, message);
+      return {
+        properties: stubGa4Properties(stubSeed),
+        source: "stub",
+        error: message,
+      };
+    }
     const json = (await res.json()) as {
       accountSummaries?: Array<{
         displayName?: string;
@@ -158,8 +201,22 @@ export async function listGa4Properties(opts: {
         });
       }
     }
-    return out.length ? out : stubGa4Properties(stubSeed);
-  } catch {
-    return stubGa4Properties(stubSeed);
+    if (out.length === 0) {
+      return {
+        properties: stubGa4Properties(stubSeed),
+        source: "stub",
+        error:
+          "Connected Google account has access to GA4, but no properties were returned. Confirm the account is a property user/admin in Analytics → Admin → Property access management.",
+      };
+    }
+    return { properties: out, source: "live" };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[ga4] listGa4Properties exception:", message);
+    return {
+      properties: stubGa4Properties(stubSeed),
+      source: "stub",
+      error: `Could not reach Google Analytics Admin API (${message}).`,
+    };
   }
 }

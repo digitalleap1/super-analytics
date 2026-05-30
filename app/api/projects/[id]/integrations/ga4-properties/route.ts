@@ -9,9 +9,13 @@ export async function GET(
 ) {
   const { user, project, response } = await getApiProject(params.id);
   if (!project || !user) return response;
-  const properties = await listGa4Properties({
+  const result = await listGa4Properties({
     userId: user.id,
     projectId: project.id,
   });
-  return NextResponse.json({ properties });
+  return NextResponse.json({
+    properties: result.properties,
+    source: result.source,
+    error: result.error,
+  });
 }
