@@ -23,7 +23,7 @@ export function SavedReportRowActions({ projectId, reportId }: Props) {
   const [isPending, startTransition] = useTransition();
 
   function del() {
-    if (!confirm("Delete this saved report? Any public share link will stop working.")) {
+    if (!confirm("Delete this past report? Any public share link will stop working.")) {
       return;
     }
     startTransition(async () => {
@@ -34,7 +34,7 @@ export function SavedReportRowActions({ projectId, reportId }: Props) {
         toast.error("Could not delete");
         return;
       }
-      toast.success("Saved report deleted");
+      toast.success("Past report deleted");
       router.refresh();
     });
   }
@@ -42,7 +42,7 @@ export function SavedReportRowActions({ projectId, reportId }: Props) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Saved report actions">
+        <Button variant="ghost" size="icon" aria-label="Past report actions">
           <MoreVertical className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>

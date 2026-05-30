@@ -359,45 +359,31 @@ export function EditableProjectReport(props: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          {props.project.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={props.project.logoUrl}
-              alt=""
-              className="h-12 w-12 shrink-0 rounded-xl border bg-card object-cover shadow-sm"
-            />
-          ) : (
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-base font-bold uppercase text-primary-foreground shadow-sm">
-              {props.project.name.slice(0, 2)}
-            </div>
-          )}
-          <div className="min-w-0">
-            <h1 className="truncate text-2xl font-semibold tracking-tight">
-              {props.project.name}
-            </h1>
-            <a
-              href={`https://${props.project.domain}`}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-0.5 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-            >
-              {props.project.domain}
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-            {props.template ? (
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Template:{" "}
-                <Link
-                  href={`/settings/templates/${props.template.id}`}
-                  className="text-primary hover:underline"
-                >
-                  {props.template.name}
-                </Link>
-              </p>
-            ) : null}
-          </div>
+      <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
+        {/* Toolbar — the logo + title appear inside #report-pdf below
+            (ReportLogoHeader), so the toolbar shows only action controls
+            and a small breadcrumb-style template reference. */}
+        <div className="min-w-0">
+          <a
+            href={`https://${props.project.domain}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            {props.project.domain}
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+          {props.template ? (
+            <p className="text-xs text-muted-foreground">
+              Template:{" "}
+              <Link
+                href={`/settings/templates/${props.template.id}`}
+                className="text-primary hover:underline"
+              >
+                {props.template.name}
+              </Link>
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!editing ? (
@@ -491,7 +477,7 @@ export function EditableProjectReport(props: Props) {
                   <Button asChild variant="outline" size="sm">
                     <Link href={`/projects/${props.project.id}/reports`}>
                       <Bookmark className="mr-2 h-4 w-4" />
-                      Saved
+                      Past reports
                     </Link>
                   </Button>
                   <Button

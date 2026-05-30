@@ -16,10 +16,10 @@ type Props = {
 
 function arrowFor(b: SummaryBullet) {
   if (b.direction === "up")
-    return <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />;
+    return <ArrowUpRight className="h-3 w-3 text-emerald-600" />;
   if (b.direction === "down")
-    return <ArrowDownRight className="h-3.5 w-3.5 text-rose-600" />;
-  return <Minus className="h-3.5 w-3.5 text-muted-foreground" />;
+    return <ArrowDownRight className="h-3 w-3 text-rose-600" />;
+  return <Minus className="h-3 w-3 text-muted-foreground" />;
 }
 
 function colorFor(direction: SummaryBullet["direction"]) {
@@ -35,43 +35,51 @@ export function ReportSummaryCard({ summary }: Props) {
         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary">
           <Sparkles className="h-3.5 w-3.5" />
         </div>
-        <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-primary">
-            Summary of this report
-          </h3>
-        </div>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-primary">
+          Summary of this report
+        </h3>
       </div>
-      <p className="mb-4 text-base font-medium leading-snug text-foreground">
-        {summary.headline}
+
+      {/* The main narrative paragraph — human-readable, same wording template
+          across all projects, with stats filled from the actual data. */}
+      <p className="text-base leading-relaxed text-foreground">
+        {summary.narrative}
       </p>
-      <ul className="grid gap-2 sm:grid-cols-2">
-        {summary.bullets.map((b) => {
-          const sign =
-            b.changePct == null ? "" : b.changePct >= 0 ? "+" : "";
-          const pctStr =
-            b.changePct == null ? "—" : `${sign}${b.changePct.toFixed(1)}%`;
-          return (
-            <li
-              key={b.label}
-              className="flex items-baseline justify-between gap-3 rounded-md border bg-background/60 px-3 py-2 text-sm"
-            >
-              <span className="text-muted-foreground">{b.label}</span>
-              <span className="flex items-center gap-2 font-semibold">
-                <span className="text-foreground">{formatBulletValue(b)}</span>
+
+      {/* Compact stat chips underneath so the reader can scan exact numbers
+          at a glance without leaving the paragraph. */}
+      {summary.bullets.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-1.5 border-t border-primary/10 pt-3">
+          {summary.bullets.map((b) => {
+            const sign =
+              b.changePct == null ? "" : b.changePct >= 0 ? "+" : "";
+            const pctStr =
+              b.changePct == null ? "—" : `${sign}${b.changePct.toFixed(1)}%`;
+            return (
+              <div
+                key={b.label}
+                className="inline-flex items-center gap-1.5 rounded-full border bg-background/60 px-2.5 py-1 text-xs"
+              >
+                <span className="font-medium text-muted-foreground">
+                  {b.label}
+                </span>
+                <span className="font-semibold text-foreground">
+                  {formatBulletValue(b)}
+                </span>
                 <span
                   className={cn(
-                    "flex items-center gap-0.5 text-xs",
+                    "flex items-center gap-0.5",
                     colorFor(b.direction),
                   )}
                 >
                   {arrowFor(b)}
                   {pctStr}
                 </span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
     </Card>
   );
 }

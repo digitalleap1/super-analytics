@@ -89,6 +89,14 @@ export async function POST(
     select: { id: true, name: true, createdAt: true, shareToken: true },
   });
 
+  // After freezing a snapshot, reset the live Analysis + Other-tasks fields
+  // so the next reporting period starts on a blank canvas. The notes that
+  // were just saved live on inside the snapshot.
+  await prisma.project.update({
+    where: { id: project.id },
+    data: { analysisNotes: null, otherTasks: null },
+  });
+
   const baseUrl =
     process.env.NEXTAUTH_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
   const shareUrl = created.shareToken

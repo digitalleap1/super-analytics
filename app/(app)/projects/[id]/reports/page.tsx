@@ -13,7 +13,7 @@ export async function generateMetadata({
   params: { id: string };
 }) {
   const { project } = await requireProject(params.id);
-  return { title: `Saved reports — ${project.name}` };
+  return { title: `Past reports — ${project.name}` };
 }
 
 function formatDate(d: Date): string {
@@ -57,11 +57,13 @@ export default async function SavedReportsPage({
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              Saved reports
+              Past reports
             </h1>
             <p className="text-sm text-muted-foreground">
-              Frozen-in-time snapshots of <span className="font-medium text-foreground">{project.name}</span>
-              {" "}— save now from the project page to add one here.
+              Every report you&apos;ve saved for{" "}
+              <span className="font-medium text-foreground">{project.name}</span>
+              . Open any one to view it, share it, or send the public link to
+              your client.
             </p>
           </div>
           <Button asChild>
@@ -76,11 +78,11 @@ export default async function SavedReportsPage({
       {reports.length === 0 ? (
         <Card className="flex flex-col items-center justify-center px-6 py-16 text-center">
           <Bookmark className="h-8 w-8 text-muted-foreground" />
-          <h2 className="mt-3 text-lg font-semibold">No saved reports yet</h2>
+          <h2 className="mt-3 text-lg font-semibold">No past reports yet</h2>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
             Open the project, set the date range you want to share, click{" "}
             <strong>Save report</strong> and it&apos;ll show up here. You can
-            then share each saved report with a public link for clients.
+            then share each past report with a public link for clients.
           </p>
           <Button asChild className="mt-5">
             <Link href={`/projects/${project.id}`}>Go to project →</Link>

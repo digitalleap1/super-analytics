@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Check, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { RichTextDisplay, RichTextEditor } from "./rich-text-editor";
 
 type Props = {
   // Stable identifier for the section, e.g. "analysisNotes" / "otherTasks".
@@ -22,11 +22,20 @@ type Props = {
   icon: React.ReactNode;
 };
 
+function hasContent(html: string): boolean {
+  // TipTap empty doc is "<p></p>" — treat as no content.
+  const stripped = html
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+  return stripped.length > 0;
+}
+
 // Free-text section the user fills in (e.g. "Analysis", "Other tasks").
-// - Click "Edit" → textarea with Save/Cancel
-// - Empty state renders a friendly placeholder so the section never looks broken
-// - Save persists to PATCH /api/projects/[id]
-// - Hidden entirely in read-only / snapshot mode when there's no content
+// - Edit mode: rich-text editor (bold, italic, lists, quote)
+// - Read mode: rendered HTML
+// - Saves via PATCH /api/projects/[id]
+// - Hidden entirely in read-only / snapshot mode when empty
 export function EditableTextSection({
   fieldKey,
   projectId,
@@ -41,35 +50,22 @@ export function EditableTextSection({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (editing) {
-      // Autofocus + select end of text
-      requestAnimationFrame(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          const len = textareaRef.current.value.length;
-          textareaRef.current.setSelectionRange(len, len);
-        }
-      });
-    }
-  }, [editing]);
 
   async function save() {
     setSaving(true);
     try {
+      const payload = hasContent(draft) ? draft : null;
       const res = await fetch(`/api/projects/${projectId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [fieldKey]: draft.trim() || null }),
+        body: JSON.stringify({ [fieldKey]: payload }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         toast.error(body?.error ?? "Could not save");
         return;
       }
-      setValue(draft);
+      setValue(payload ?? "");
       setEditing(false);
       toast.success("Saved");
     } catch {
@@ -79,9 +75,11 @@ export function EditableTextSection({
     }
   }
 
-  // In snapshot/read-only mode, skip rendering if there's no content. Keeps
-  // shared reports clean.
-  if (readOnly && !value.trim()) return null;
+  const filled = hasContent(value);
+
+  // Hide entirely in snapshot/share view when empty — keeps shared client
+  // reports clean.
+  if (readOnly && !filled) return null;
 
   return (
     <Card className="p-5">
@@ -108,19 +106,17 @@ export function EditableTextSection({
             }}
           >
             <Pencil className="h-3.5 w-3.5" />
-            {value ? "Edit" : "Add"}
+            {filled ? "Edit" : "Add"}
           </Button>
         ) : null}
       </div>
 
       {editing ? (
         <div className="space-y-2">
-          <textarea
-            ref={textareaRef}
+          <RichTextEditor
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={setDraft}
             placeholder={placeholder}
-            className="min-h-[140px] w-full resize-y rounded-md border bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary"
             disabled={saving}
           />
           <div className="flex items-center justify-end gap-2">
@@ -145,14 +141,8 @@ export function EditableTextSection({
             </Button>
           </div>
         </div>
-      ) : value ? (
-        <div
-          className={cn(
-            "whitespace-pre-wrap rounded-md border bg-muted/30 px-3 py-2.5 text-sm leading-relaxed",
-          )}
-        >
-          {value}
-        </div>
+      ) : filled ? (
+        <RichTextDisplay html={value} />
       ) : (
         <div className="rounded-md border border-dashed bg-muted/20 px-3 py-4 text-center text-sm text-muted-foreground">
           {placeholder}

@@ -143,7 +143,7 @@ export function QuickShareButton({
               href={`/projects/${projectId}/reports`}
               className="text-primary hover:underline"
             >
-              this project&apos;s saved reports
+              this project&apos;s past reports
             </a>{" "}
             — you can revoke the link from there at any time.
           </p>

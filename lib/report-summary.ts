@@ -27,6 +27,7 @@ export type SummaryBullet = {
 
 export type ReportSummary = {
   headline: string;
+  narrative: string; // multi-sentence paragraph readable as standalone text
   bullets: SummaryBullet[];
 };
 
@@ -167,7 +168,109 @@ export function buildReportSummary(opts: {
     headline = `${top.label} ${dirWord} ${pct.toFixed(0)}% vs the previous period.`;
   }
 
-  return { headline, bullets };
+  const narrative = buildNarrative(bullets, opts.hasGsc, opts.hasGa4);
+
+  return { headline, narrative, bullets };
+}
+
+// Joins individual movements into a single human-readable paragraph. The phrasing
+// is intentionally template-driven so every project's summary reads the same way
+// — only the numbers and directions vary.
+function buildNarrative(
+  bullets: SummaryBullet[],
+  hasGsc: boolean,
+  hasGa4: boolean,
+): string {
+  if (!hasGsc && !hasGa4) {
+    return "Connect Google Search Console and Analytics from project settings to load live numbers for this report.";
+  }
+
+  function phrase(label: string, b: SummaryBullet | undefined): string | null {
+    if (!b) return null;
+    if (b.changePct == null) {
+      // No previous-period comparison available; just state the current value.
+      if (b.format === "number")
+        return `${label} stood at ${formatBulletValue(b)}`;
+      if (b.format === "percent")
+        return `${label} held at ${formatBulletValue(b)}`;
+      if (b.format === "position")
+        return `${label} averaged ${formatBulletValue(b)}`;
+    }
+    const pct = Math.abs(b.changePct ?? 0);
+    if (b.direction === "flat") {
+      return `${label} held roughly flat`;
+    }
+    const verb =
+      b.direction === "up"
+        ? b.format === "position"
+          ? "improved"
+          : "improved by"
+        : b.format === "position"
+          ? "slipped"
+          : "dropped by";
+    if (b.format === "position") {
+      const delta =
+        b.previous == null ? 0 : Math.abs(b.current - b.previous);
+      return `${label} ${verb} ${delta.toFixed(1)} places`;
+    }
+    return `${label} ${verb} ${pct.toFixed(0)}%`;
+  }
+
+  const byLabel = new Map(bullets.map((b) => [b.label, b]));
+  const sentences: string[] = [];
+
+  const opener = "During the selected period";
+
+  if (hasGsc) {
+    const parts = [
+      phrase("organic clicks", byLabel.get("Organic clicks")),
+      phrase("impressions", byLabel.get("Impressions")),
+    ].filter(Boolean) as string[];
+    if (parts.length) {
+      sentences.push(`${opener}, ${parts.join(", while ")}.`);
+    }
+    const pos = byLabel.get("Average position");
+    const ctr = byLabel.get("Average CTR");
+    const second: string[] = [];
+    if (pos) {
+      const p = phrase("average position", pos);
+      if (p) second.push(p);
+    }
+    if (ctr) {
+      const c = phrase("click-through rate", ctr);
+      if (c) second.push(c);
+    }
+    if (second.length) {
+      sentences.push(
+        `${second.join(", and ").replace(/^./, (s) => s.toUpperCase())}.`,
+      );
+    }
+  }
+
+  if (hasGa4) {
+    const sessions = byLabel.get("Sessions");
+    const users = byLabel.get("Users");
+    const ga4parts = [
+      phrase("sessions", sessions),
+      phrase("users", users),
+    ].filter(Boolean) as string[];
+    if (ga4parts.length) {
+      const prefix = hasGsc
+        ? "User activity"
+        : `${opener}, user activity`;
+      // We have phrases like "sessions improved by 12%". Rephrase for flow.
+      const joined = ga4parts.join(", and ");
+      sentences.push(
+        `${prefix}: ${joined}, compared with the previous period.`,
+      );
+    }
+  }
+
+  if (sentences.length === 0) {
+    return "Performance held steady versus the previous period — no significant changes to report.";
+  }
+
+  return sentences.join(" ");
 }
 
 export function formatBulletValue(b: SummaryBullet): string {

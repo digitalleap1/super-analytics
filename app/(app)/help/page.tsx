@@ -322,7 +322,7 @@ const TROUBLESHOOTING: { problem: string; fix: string }[] = [
   },
   {
     problem: "Saved report looks different from live",
-    fix: "Saved reports are snapshots — they preserve the data as of save time. Live reports update with new data.",
+    fix: "Past reports are snapshots — they preserve the data as of save time. Live reports update with new data.",
   },
   {
     problem: "Locked out / forgot password",
