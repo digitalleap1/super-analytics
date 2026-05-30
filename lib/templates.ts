@@ -1,14 +1,17 @@
 import { prisma } from "@/lib/prisma";
 
 export type SectionKey =
+  | "summary"
   | "kpis"
+  | "analysis"
   | "chartClicksImpressions"
   | "chartPositionTrend"
   | "keywords"
   | "backlinks"
   | "topQueries"
   | "topPages"
-  | "ga4Channels";
+  | "ga4Channels"
+  | "otherTasks";
 
 export type Density = "compact" | "comfortable" | "spacious";
 export type KpiColumns = 3 | 4 | 5 | 6;
@@ -29,7 +32,9 @@ export type ReportTemplateConfig = {
 
 export const DEFAULT_TEMPLATE_CONFIG: ReportTemplateConfig = {
   sections: {
+    summary: true,
     kpis: true,
+    analysis: true,
     chartClicksImpressions: true,
     chartPositionTrend: true,
     keywords: true,
@@ -37,6 +42,7 @@ export const DEFAULT_TEMPLATE_CONFIG: ReportTemplateConfig = {
     topQueries: true,
     topPages: true,
     ga4Channels: true,
+    otherTasks: true,
   },
   layout: {
     kpiColumns: 5,
@@ -50,7 +56,9 @@ export const DEFAULT_TEMPLATE_CONFIG: ReportTemplateConfig = {
 };
 
 export const SECTION_LABELS: Record<SectionKey, string> = {
+  summary: "Executive summary (auto-generated)",
   kpis: "KPI cards",
+  analysis: "Analysis (free-text)",
   chartClicksImpressions: "Clicks & impressions chart",
   chartPositionTrend: "Position trend chart",
   keywords: "Tracked keywords",
@@ -58,6 +66,7 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   topQueries: "Top queries table",
   topPages: "Top pages table",
   ga4Channels: "GA4 channels table",
+  otherTasks: "Other tasks (free-text)",
 };
 
 // Defensive parse: accepts partial/legacy configs, fills missing fields with

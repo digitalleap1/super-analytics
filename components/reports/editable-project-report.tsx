@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Bookmark,
+  ClipboardList,
   Eye,
   EyeOff,
   ExternalLink,
+  FileText,
   Loader2,
   MousePointerClick,
   Pencil,
@@ -66,6 +68,10 @@ import type { BacklinkMonthBucket, BacklinkRow } from "@/lib/backlinks";
 import { BacklinksSection } from "@/components/backlinks/backlinks-section";
 import { SaveReportDialog } from "@/components/reports/save-report-dialog";
 import { QuickShareButton } from "@/components/reports/quick-share-button";
+import { ReportLogoHeader } from "@/components/reports/report-logo-header";
+import { ReportSummaryCard } from "@/components/reports/report-summary-card";
+import { EditableTextSection } from "@/components/reports/editable-text-section";
+import type { ReportSummary } from "@/lib/report-summary";
 import type {
   Ga4ChannelRow,
   Ga4Overview,
@@ -107,6 +113,12 @@ type Props = {
     name: string;
     createdAt: string;
   };
+  // Top-of-report executive summary, generated server-side from current vs
+  // previous period metrics.
+  summary?: ReportSummary;
+  // Free-text fields (per-project), shown as toggleable sections.
+  analysisNotes?: string | null;
+  otherTasks?: string | null;
 };
 
 function SectionHeader({
@@ -438,6 +450,9 @@ export function EditableProjectReport(props: Props) {
                       keywords: props.keywords,
                       backlinks: props.backlinks,
                       backlinkMonthly: props.backlinkMonthly,
+                      summary: props.summary,
+                      analysisNotes: props.analysisNotes ?? null,
+                      otherTasks: props.otherTasks ?? null,
                     })}
                   />
                   <SaveReportDialog
@@ -468,6 +483,9 @@ export function EditableProjectReport(props: Props) {
                       keywords: props.keywords,
                       backlinks: props.backlinks,
                       backlinkMonthly: props.backlinkMonthly,
+                      summary: props.summary,
+                      analysisNotes: props.analysisNotes ?? null,
+                      otherTasks: props.otherTasks ?? null,
                     })}
                   />
                   <Button asChild variant="outline" size="sm">
@@ -537,21 +555,39 @@ export function EditableProjectReport(props: Props) {
         id="report-pdf"
         className={cn("bg-background", density.gap, "space-y-6")}
       >
-        <div className="hidden border-b pb-3 print:block">
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            {props.reportPeriodLabel}
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-            {props.project.name}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {props.project.domain} · {props.rangeLabel}
-            {props.compare ? " · vs. previous period" : ""}
-          </p>
+        {/* Branded header (logo + name + period) — always visible, always
+            captured in PDF/PPT/PNG exports and shared snapshots. */}
+        <section data-pptx-slide>
+          <ReportLogoHeader
+            name={props.project.name}
+            domain={props.project.domain}
+            logoUrl={props.project.logoUrl}
+            rangeLabel={props.rangeLabel}
+            reportPeriodLabel={props.reportPeriodLabel}
+          />
           {cfg.branding.headerText ? (
-            <p className="mt-1 text-sm">{cfg.branding.headerText}</p>
+            <p className="mt-2 text-center text-sm text-muted-foreground">
+              {cfg.branding.headerText}
+            </p>
           ) : null}
-        </div>
+        </section>
+
+        {/* Auto-generated executive summary */}
+        {cfg.sections.summary && props.summary ? (
+          <section data-pptx-slide>
+            <SectionHeader
+              title=""
+              editing={editing}
+              onHide={() => setSection("summary", false)}
+            />
+            <ReportSummaryCard summary={props.summary} />
+          </section>
+        ) : editing ? (
+          <HiddenSectionStub
+            name="Executive summary"
+            onShow={() => setSection("summary", true)}
+          />
+        ) : null}
 
         {props.isStub ? (
           <Card className="border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100 print:hidden">
@@ -575,7 +611,7 @@ export function EditableProjectReport(props: Props) {
 
         {/* KPI section */}
         {cfg.sections.kpis ? (
-          <section data-pptx-slide>
+          <section data-pptx-slide id="report-section-kpis">
             <SectionHeader
               title="Key metrics"
               editing={editing}
@@ -632,6 +668,27 @@ export function EditableProjectReport(props: Props) {
           <HiddenSectionStub
             name="Key metrics"
             onShow={() => setSection("kpis", true)}
+          />
+        ) : null}
+
+        {/* Analysis (free text — what the team observed in the metrics) */}
+        {cfg.sections.analysis ? (
+          <section data-pptx-slide>
+            <EditableTextSection
+              fieldKey="analysisNotes"
+              projectId={props.project.id}
+              title="Analysis"
+              helper="What you observed in this period — trends, wins, concerns, next steps."
+              placeholder="Add a short narrative analysing what the metrics above show. Paste links, screenshot URLs, or whatever helps the client understand the data."
+              initialValue={props.analysisNotes ?? null}
+              readOnly={props.mode === "snapshot"}
+              icon={<FileText className="h-3.5 w-3.5" />}
+            />
+          </section>
+        ) : editing ? (
+          <HiddenSectionStub
+            name="Analysis (free-text)"
+            onShow={() => setSection("analysis", true)}
           />
         ) : null}
 
@@ -785,6 +842,27 @@ export function EditableProjectReport(props: Props) {
           <HiddenSectionStub
             name="Backlinks (pie chart + table)"
             onShow={() => setSection("backlinks", true)}
+          />
+        ) : null}
+
+        {/* Other tasks (free text — on-page, technical SEO, content, etc.) */}
+        {cfg.sections.otherTasks ? (
+          <section data-pptx-slide>
+            <EditableTextSection
+              fieldKey="otherTasks"
+              projectId={props.project.id}
+              title="Other tasks"
+              helper="On-page changes, technical fixes, content updates, outreach — anything the client should know about."
+              placeholder="List the off-report work completed this period. Examples: 'Updated meta tags on 12 service pages', 'Fixed broken canonical on /pricing', 'Outreached to 30 prospects'."
+              initialValue={props.otherTasks ?? null}
+              readOnly={props.mode === "snapshot"}
+              icon={<ClipboardList className="h-3.5 w-3.5" />}
+            />
+          </section>
+        ) : editing ? (
+          <HiddenSectionStub
+            name="Other tasks (free-text)"
+            onShow={() => setSection("otherTasks", true)}
           />
         ) : null}
 

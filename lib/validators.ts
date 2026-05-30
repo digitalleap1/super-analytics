@@ -23,6 +23,8 @@ export const projectUpdateSchema = projectCreateSchema.partial().extend({
   gscSiteUrl: z.string().max(500).optional().nullable(),
   ga4PropertyId: z.string().max(50).optional().nullable(),
   templateId: z.string().optional().nullable(),
+  analysisNotes: z.string().max(10000).optional().nullable(),
+  otherTasks: z.string().max(10000).optional().nullable(),
 });
 
 export type ProjectUpdateInput = z.infer<typeof projectUpdateSchema>;

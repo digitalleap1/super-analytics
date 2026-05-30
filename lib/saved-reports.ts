@@ -10,6 +10,7 @@ import type {
 } from "@/lib/google/types";
 import type { KeywordRow } from "@/lib/keywords";
 import type { BacklinkMonthBucket, BacklinkRow } from "@/lib/backlinks";
+import type { ReportSummary } from "@/lib/report-summary";
 
 // Frozen-in-time picture of everything <EditableProjectReport> renders.
 // Stored as a single JSON string on SavedReport.snapshot.
@@ -36,6 +37,10 @@ export type SavedReportSnapshot = {
   keywords: KeywordRow[];
   backlinks: BacklinkRow[];
   backlinkMonthly: BacklinkMonthBucket[];
+  // Added in template v2: top-of-report summary + the two free-text sections.
+  summary?: ReportSummary;
+  analysisNotes?: string | null;
+  otherTasks?: string | null;
 };
 
 export function parseSnapshot(raw: string): SavedReportSnapshot | null {

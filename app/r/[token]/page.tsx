@@ -87,6 +87,9 @@ export default async function PublicReportPage({
             name: saved.name,
             createdAt: saved.createdAt.toISOString().slice(0, 10),
           }}
+          summary={snapshot.summary}
+          analysisNotes={snapshot.analysisNotes ?? null}
+          otherTasks={snapshot.otherTasks ?? null}
         />
       </main>
 

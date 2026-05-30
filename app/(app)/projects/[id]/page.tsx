@@ -12,6 +12,7 @@ import { getGa4Channels, getGa4Overview } from "@/lib/google/ga4";
 import { getGscOverview, getGscPages, getGscQueries } from "@/lib/google/gsc";
 import { getKeywordSnapshot } from "@/lib/keywords";
 import { listBacklinkMonthlyStats, listBacklinksInRange } from "@/lib/backlinks";
+import { buildReportSummary } from "@/lib/report-summary";
 import { loadTemplateForProject } from "@/lib/templates";
 
 export async function generateMetadata({
@@ -151,6 +152,15 @@ export default async function ProjectPage({
     .replace(/[^\w-]+/g, "-")
     .toLowerCase()}-${ymd(range.from)}-to-${ymd(range.to)}`;
 
+  const summary = buildReportSummary({
+    gsc: overview,
+    prevGsc: prevOverview,
+    ga4: ga4Overview,
+    prevGa4,
+    hasGsc,
+    hasGa4,
+  });
+
   return (
     <EditableProjectReport
       project={{
@@ -181,6 +191,9 @@ export default async function ProjectPage({
       toDate={ymd(range.to)}
       reportPeriodLabel={reportPeriodLabel(range)}
       mode="live"
+      summary={summary}
+      analysisNotes={project.analysisNotes}
+      otherTasks={project.otherTasks}
     />
   );
 }

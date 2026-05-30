@@ -79,6 +79,9 @@ export default async function ViewSavedReportPage({
           name: saved.name,
           createdAt: saved.createdAt.toISOString().slice(0, 10),
         }}
+        summary={snapshot.summary}
+        analysisNotes={snapshot.analysisNotes ?? null}
+        otherTasks={snapshot.otherTasks ?? null}
       />
     </div>
   );
