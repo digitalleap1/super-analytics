@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,6 +20,9 @@ type Props = {
   readOnly?: boolean;
   // Icon for the section header.
   icon: React.ReactNode;
+  // Bubble the saved value up so the parent can snapshot it into a saved
+  // report without needing a server-side refresh.
+  onPersistedChange?: (value: string | null) => void;
 };
 
 function hasContent(html: string): boolean {
@@ -45,11 +48,23 @@ export function EditableTextSection({
   initialValue,
   readOnly = false,
   icon,
+  onPersistedChange,
 }: Props) {
   const [value, setValue] = useState(initialValue ?? "");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
+
+  // If the parent's initialValue changes (e.g. router.refresh() after Save
+  // Report cleared the live fields, or a snapshot is opened with new data),
+  // re-anchor our local state. We only do this when not actively editing so
+  // we don't blow away an in-flight draft.
+  useEffect(() => {
+    if (editing) return;
+    const next = initialValue ?? "";
+    setValue(next);
+    setDraft(next);
+  }, [initialValue, editing]);
 
   async function save() {
     setSaving(true);
@@ -66,6 +81,7 @@ export function EditableTextSection({
         return;
       }
       setValue(payload ?? "");
+      onPersistedChange?.(payload);
       setEditing(false);
       toast.success("Saved");
     } catch {

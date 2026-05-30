@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -8,7 +8,6 @@ import {
   ClipboardList,
   Eye,
   EyeOff,
-  ExternalLink,
   FileText,
   Loader2,
   MousePointerClick,
@@ -365,33 +364,100 @@ export function EditableProjectReport(props: Props) {
     </div>
   );
 
+  // Live drafts of the two free-text sections. We initialise from props so the
+  // first render shows what the server sent, then keep them in sync with the
+  // EditableTextSection components below — that way "Save report" snapshots the
+  // text the user just typed, not the stale value from page load.
+  const [analysisDraft, setAnalysisDraft] = useState<string | null>(
+    props.analysisNotes ?? null,
+  );
+  const [otherTasksDraft, setOtherTasksDraft] = useState<string | null>(
+    props.otherTasks ?? null,
+  );
+  // Re-sync with props when the server-rendered values change — e.g. after
+  // Save Report calls router.refresh() and the server returns null because the
+  // backend cleared the live fields for the next reporting period.
+  useEffect(() => {
+    setAnalysisDraft(props.analysisNotes ?? null);
+  }, [props.analysisNotes]);
+  useEffect(() => {
+    setOtherTasksDraft(props.otherTasks ?? null);
+  }, [props.otherTasks]);
+
+  function buildSnapshotData() {
+    return {
+      version: 1 as const,
+      projectName: props.project.name,
+      projectDomain: props.project.domain,
+      projectLogoUrl: props.project.logoUrl ?? null,
+      rangeLabel: props.rangeLabel,
+      fromDate: props.fromDate,
+      toDate: props.toDate,
+      compare: props.compare,
+      isStub: props.isStub,
+      pdfFilename: props.pdfFilename,
+      config,
+      template: props.template,
+      overview: props.overview,
+      prevOverview: props.prevOverview,
+      ga4Overview: props.ga4Overview,
+      prevGa4: props.prevGa4,
+      queries: props.queries,
+      prevQueries: props.prevQueries ?? null,
+      pages: props.pages,
+      prevPages: props.prevPages ?? null,
+      channels: props.channels,
+      prevChannels: props.prevChannels ?? null,
+      keywords: props.keywords,
+      backlinks: props.backlinks,
+      backlinkMonthly: props.backlinkMonthly,
+      summary: props.summary,
+      analysisNotes: analysisDraft,
+      otherTasks: otherTasksDraft,
+    };
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
-        {/* Toolbar — the logo + title appear inside #report-pdf below
-            (ReportLogoHeader). The toolbar shows the domain link plus action
-            controls (date picker, template switcher, exports, etc.). */}
-        <a
-          href={`https://${props.project.domain}`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          {props.project.domain}
-          <ExternalLink className="h-3.5 w-3.5" />
-        </a>
-        <div className="flex flex-wrap items-center gap-2">
-          {!editing ? (
-            <>
+      {/* Toolbar.
+          - Logo / project name / period live inside #report-pdf (below).
+          - The toolbar is purely action controls: view changers on the left
+            (date + template), output actions in the middle (export, share,
+            save), navigation/mode on the right (past reports, edit, settings).
+          - Grouped with subtle separators so it reads at a glance on desktop
+            and wraps cleanly on mobile. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 print:hidden">
+        {!editing ? (
+          <>
+            {/* Group 1: View — what date / template am I looking at? */}
+            <div className="flex flex-wrap items-center gap-2">
               {props.mode === "snapshot" ? (
                 <Button asChild variant="ghost" size="sm">
                   <Link href={`/projects/${props.project.id}/reports`}>
-                    ← Back to saved
+                    ← Back to past reports
                   </Link>
                 </Button>
               ) : (
                 <DateRangePicker />
               )}
+              {props.mode !== "snapshot" && props.availableTemplates ? (
+                <QuickTemplateSwitcher
+                  projectId={props.project.id}
+                  currentTemplateId={props.currentTemplateId ?? null}
+                  templates={props.availableTemplates}
+                />
+              ) : null}
+            </div>
+
+            {props.mode !== "snapshot" ? (
+              <div
+                aria-hidden
+                className="hidden h-6 w-px bg-border sm:block"
+              />
+            ) : null}
+
+            {/* Group 2: Output — what do I do with this report? */}
+            <div className="flex flex-wrap items-center gap-2">
               <ExportMenu
                 targetId="report-pdf"
                 filename={props.pdfFilename}
@@ -401,13 +467,6 @@ export function EditableProjectReport(props: Props) {
                 rangeLabel={props.rangeLabel}
                 branding={cfg.branding.headerText}
               />
-              {props.mode !== "snapshot" && props.availableTemplates ? (
-                <QuickTemplateSwitcher
-                  projectId={props.project.id}
-                  currentTemplateId={props.currentTemplateId ?? null}
-                  templates={props.availableTemplates}
-                />
-              ) : null}
               {props.mode !== "snapshot" ? (
                 <>
                   <QuickShareButton
@@ -415,117 +474,70 @@ export function EditableProjectReport(props: Props) {
                     defaultName={`${props.project.name} — ${props.rangeLabel}`}
                     fromDate={props.fromDate}
                     toDate={props.toDate}
-                    buildSnapshot={() => ({
-                      version: 1,
-                      projectName: props.project.name,
-                      projectDomain: props.project.domain,
-                      projectLogoUrl: props.project.logoUrl ?? null,
-                      rangeLabel: props.rangeLabel,
-                      fromDate: props.fromDate,
-                      toDate: props.toDate,
-                      compare: props.compare,
-                      isStub: props.isStub,
-                      pdfFilename: props.pdfFilename,
-                      config,
-                      template: props.template,
-                      overview: props.overview,
-                      prevOverview: props.prevOverview,
-                      ga4Overview: props.ga4Overview,
-                      prevGa4: props.prevGa4,
-                      queries: props.queries,
-                      prevQueries: props.prevQueries ?? null,
-                      pages: props.pages,
-                      prevPages: props.prevPages ?? null,
-                      channels: props.channels,
-                      prevChannels: props.prevChannels ?? null,
-                      keywords: props.keywords,
-                      backlinks: props.backlinks,
-                      backlinkMonthly: props.backlinkMonthly,
-                      summary: props.summary,
-                      analysisNotes: props.analysisNotes ?? null,
-                      otherTasks: props.otherTasks ?? null,
-                    })}
+                    buildSnapshot={buildSnapshotData}
                   />
                   <SaveReportDialog
                     projectId={props.project.id}
                     defaultName={`${props.project.name} — ${props.rangeLabel}`}
                     fromDate={props.fromDate}
                     toDate={props.toDate}
-                    buildSnapshot={() => ({
-                      version: 1,
-                      projectName: props.project.name,
-                      projectDomain: props.project.domain,
-                      projectLogoUrl: props.project.logoUrl ?? null,
-                      rangeLabel: props.rangeLabel,
-                      fromDate: props.fromDate,
-                      toDate: props.toDate,
-                      compare: props.compare,
-                      isStub: props.isStub,
-                      pdfFilename: props.pdfFilename,
-                      config,
-                      template: props.template,
-                      overview: props.overview,
-                      prevOverview: props.prevOverview,
-                      ga4Overview: props.ga4Overview,
-                      prevGa4: props.prevGa4,
-                      queries: props.queries,
-                      prevQueries: props.prevQueries ?? null,
-                      pages: props.pages,
-                      prevPages: props.prevPages ?? null,
-                      channels: props.channels,
-                      prevChannels: props.prevChannels ?? null,
-                      keywords: props.keywords,
-                      backlinks: props.backlinks,
-                      backlinkMonthly: props.backlinkMonthly,
-                      summary: props.summary,
-                      analysisNotes: props.analysisNotes ?? null,
-                      otherTasks: props.otherTasks ?? null,
-                    })}
+                    buildSnapshot={buildSnapshotData}
                   />
-                  <Button asChild variant="outline" size="sm">
+                </>
+              ) : null}
+            </div>
+
+            {props.mode !== "snapshot" ? (
+              <>
+                <div
+                  aria-hidden
+                  className="hidden h-6 w-px bg-border sm:block"
+                />
+                {/* Group 3: Nav — pushed to the right so the primary actions
+                    above stay visually dominant. */}
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+                  <Button asChild variant="ghost" size="sm">
                     <Link href={`/projects/${props.project.id}/reports`}>
-                      <Bookmark className="mr-2 h-4 w-4" />
-                      Past reports
+                      <Bookmark className="mr-1.5 h-4 w-4" />
+                      Past
                     </Link>
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => setEditing(true)}
                   >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit layout
+                    <Pencil className="mr-1.5 h-4 w-4" />
+                    Edit
                   </Button>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/projects/${props.project.id}/settings`}>
-                      <Settings className="mr-2 h-4 w-4" />
-                      Settings
+                  <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                    <Link
+                      href={`/projects/${props.project.id}/settings`}
+                      aria-label="Project settings"
+                    >
+                      <Settings className="h-4 w-4" />
                     </Link>
                   </Button>
-                </>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <Button variant="ghost" size="sm" onClick={cancel}>
-                <X className="mr-2 h-4 w-4" />
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={save}
-                disabled={!isDirty || isSaving}
-              >
-                {isSaving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                Save layout
-              </Button>
-            </>
-          )}
-        </div>
+                </div>
+              </>
+            ) : null}
+          </>
+        ) : (
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={cancel}>
+              <X className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+            <Button size="sm" onClick={save} disabled={!isDirty || isSaving}>
+              {isSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              Save layout
+            </Button>
+          </div>
+        )}
       </div>
 
       {editing ? (
@@ -674,9 +686,10 @@ export function EditableProjectReport(props: Props) {
               title="Analysis"
               helper="What you observed in this period — trends, wins, concerns, next steps."
               placeholder="Add a short narrative analysing what the metrics above show. Paste links, screenshot URLs, or whatever helps the client understand the data."
-              initialValue={props.analysisNotes ?? null}
+              initialValue={analysisDraft}
               readOnly={props.mode === "snapshot"}
               icon={<FileText className="h-3.5 w-3.5" />}
+              onPersistedChange={setAnalysisDraft}
             />
           </section>
         ) : editing ? (
@@ -851,9 +864,10 @@ export function EditableProjectReport(props: Props) {
               title="Other tasks"
               helper="On-page changes, technical fixes, content updates, outreach — anything the client should know about."
               placeholder="List the off-report work completed this period. Examples: 'Updated meta tags on 12 service pages', 'Fixed broken canonical on /pricing', 'Outreached to 30 prospects'."
-              initialValue={props.otherTasks ?? null}
+              initialValue={otherTasksDraft}
               readOnly={props.mode === "snapshot"}
               icon={<ClipboardList className="h-3.5 w-3.5" />}
+              onPersistedChange={setOtherTasksDraft}
             />
           </section>
         ) : editing ? (
