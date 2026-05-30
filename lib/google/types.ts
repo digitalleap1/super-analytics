@@ -59,8 +59,8 @@ export type Ga4Overview = {
   totals: {
     sessions: number;
     totalUsers: number;
+    newUsers: number;
     engagementRate: number;
-    keyEvents: number;
     eventCount: number;
     screenPageViews: number;
   };
@@ -73,8 +73,8 @@ export type Ga4ChannelRow = {
   channel: string;
   sessions: number;
   totalUsers: number;
+  newUsers: number;
   engagementRate: number;
-  keyEvents: number;
   eventCount: number;
 };
 

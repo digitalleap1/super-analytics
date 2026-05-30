@@ -26,14 +26,17 @@ type FetchOpts = {
   to: Date;
 };
 
-// NOTE: GA4 deprecated "conversions" — it's now an alias for "keyEvents".
-// Requesting both in the same report returns "Found duplicate metrics:
-// conversions". We track only keyEvents going forward.
+// NOTE: GA4 deprecated "conversions" — it's now an alias for "keyEvents", and
+// requesting both returns "Found duplicate metrics: conversions". keyEvents
+// itself is only non-zero when the property owner explicitly marks events as
+// key — which most clients haven't done — so we dropped it in favour of
+// newUsers, which is always populated and more useful for SEO acquisition
+// reporting.
 const OVERVIEW_METRICS = [
   "sessions",
   "totalUsers",
+  "newUsers",
   "engagementRate",
-  "keyEvents",
   "eventCount",
   "screenPageViews",
 ] as const;
@@ -87,8 +90,8 @@ export async function getGa4Overview(opts: FetchOpts): Promise<Ga4Overview> {
       totals: {
         sessions: get(0),
         totalUsers: get(1),
-        engagementRate: get(2),
-        keyEvents: get(3),
+        newUsers: get(2),
+        engagementRate: get(3),
         eventCount: get(4),
         screenPageViews: get(5),
       },
@@ -127,8 +130,8 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
         metrics: [
           { name: "sessions" },
           { name: "totalUsers" },
+          { name: "newUsers" },
           { name: "engagementRate" },
-          { name: "keyEvents" },
           { name: "eventCount" },
         ],
         limit: "20",
@@ -138,8 +141,8 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
       channel: r.dimensionValues?.[0]?.value ?? "(unknown)",
       sessions: Number(r.metricValues?.[0]?.value ?? 0),
       totalUsers: Number(r.metricValues?.[1]?.value ?? 0),
-      engagementRate: Number(r.metricValues?.[2]?.value ?? 0),
-      keyEvents: Number(r.metricValues?.[3]?.value ?? 0),
+      newUsers: Number(r.metricValues?.[2]?.value ?? 0),
+      engagementRate: Number(r.metricValues?.[3]?.value ?? 0),
       eventCount: Number(r.metricValues?.[4]?.value ?? 0),
     }));
     return { rows, source: "live" };

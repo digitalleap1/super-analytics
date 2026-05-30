@@ -241,15 +241,15 @@ export function ReportTables({
         },
       },
       {
-        accessorKey: "keyEvents",
-        header: "Key events",
+        accessorKey: "newUsers",
+        header: "New users",
         cell: (info) => {
           const row = info.row.original;
           const prev = prevChannelByKey.get(row.channel);
           return valueWithDelta(
-            row.keyEvents,
-            prev?.keyEvents,
-            formatNumber(row.keyEvents),
+            row.newUsers,
+            prev?.newUsers,
+            formatNumber(row.newUsers),
           );
         },
       },
@@ -403,7 +403,7 @@ export function ReportTables({
                 { key: "sessions", header: "Sessions" },
                 { key: "totalUsers", header: "Users" },
                 { key: "engagementRate", header: "Engagement" },
-                { key: "keyEvents", header: "Key events" },
+                { key: "newUsers", header: "New users" },
                 { key: "eventCount", header: "Events" },
               ]}
             />
@@ -417,7 +417,7 @@ export function ReportTables({
                   sessions: formatNumber(r.sessions),
                   totalUsers: formatNumber(r.totalUsers),
                   engagementRate: formatPercent(r.engagementRate),
-                  keyEvents: formatNumber(r.keyEvents),
+                  newUsers: formatNumber(r.newUsers),
                   eventCount: formatNumber(r.eventCount),
                 })) as Record<string, unknown>[]
               }
@@ -426,7 +426,7 @@ export function ReportTables({
                 { key: "sessions", header: "Sessions" },
                 { key: "totalUsers", header: "Users" },
                 { key: "engagementRate", header: "Engagement" },
-                { key: "keyEvents", header: "Key events" },
+                { key: "newUsers", header: "New users" },
                 { key: "eventCount", header: "Events" },
               ]}
             />

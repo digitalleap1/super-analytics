@@ -715,10 +715,10 @@ export function EditableProjectReport(props: Props) {
                 accent="navy"
               />
               <KpiCard
-                label="Key events"
-                value={formatNumber(props.ga4Overview.totals.keyEvents)}
-                current={props.ga4Overview.totals.keyEvents}
-                previous={props.prevGa4?.totals.keyEvents}
+                label="New users"
+                value={formatNumber(props.ga4Overview.totals.newUsers)}
+                current={props.ga4Overview.totals.newUsers}
+                previous={props.prevGa4?.totals.newUsers}
                 icon={Sparkles}
                 accent="primary"
               />
