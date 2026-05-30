@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getApiProject } from "@/lib/api-auth";
+import { clearProjectCache } from "@/lib/cache";
 import { prisma } from "@/lib/prisma";
 import { isWorkspaceAdmin } from "@/lib/access";
 
@@ -36,5 +37,6 @@ export async function DELETE(
   }
 
   await prisma.projectMember.delete({ where: { id: member.id } });
+  await clearProjectCache(project.id);
   return NextResponse.json({ ok: true });
 }

@@ -26,7 +26,7 @@ export function projectOAuthRedirectUri(): string {
 // is encoded, not encrypted.
 export function signProjectState(projectId: string): string {
   const secret = process.env.NEXTAUTH_SECRET ?? "dev-secret-fallback";
-  const nonce = randomBytes(8).toString("base64url");
+  const nonce = randomBytes(32).toString("base64url");
   const payload = `${projectId}.${nonce}`;
   const sig = createHmac("sha256", secret).update(payload).digest("base64url");
   return `${Buffer.from(payload).toString("base64url")}.${sig}`;

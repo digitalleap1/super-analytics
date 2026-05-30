@@ -46,9 +46,15 @@ export function LoginForm() {
   async function handleGoogle() {
     setGoogleLoading(true);
     try {
-      await signIn("google", { callbackUrl: from });
+      const res = await signIn("google", { callbackUrl: from, redirect: false });
+      if (res?.error) {
+        toast.error("Google sign-in failed. Please try again.");
+        setGoogleLoading(false);
+        return;
+      }
+      if (res?.url) router.push(res.url);
     } catch {
-      toast.error("Google sign-in failed");
+      toast.error("Google sign-in failed. Please try again.");
       setGoogleLoading(false);
     }
   }

@@ -306,8 +306,8 @@ function Step2Locked() {
       <div>
         <h3 className="font-semibold">Connect Google</h3>
         <p className="text-sm text-muted-foreground">
-          Wired up in Phase 4. You&apos;ll be able to skip this and connect
-          later from project settings.
+          Skip this for now — you can connect Search Console and Analytics later
+          from the project&apos;s Settings page.
         </p>
       </div>
     </div>
@@ -321,8 +321,8 @@ function Step3Locked() {
       <div>
         <h3 className="font-semibold">Pick GSC site &amp; GA4 property</h3>
         <p className="text-sm text-muted-foreground">
-          Wired up in Phase 4. Both will be optional — you can add or change
-          them anytime.
+          Configurable later from project Settings — both are optional and can
+          be changed anytime.
         </p>
       </div>
     </div>

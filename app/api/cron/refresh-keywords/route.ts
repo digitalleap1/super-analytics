@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
@@ -6,6 +8,15 @@ import {
   fetchKeywordRankToday,
   isSeoApiConfigured,
 } from "@/lib/seo-api/keyword-ranks";
+
+function safeCompare(a: string, b: string): boolean {
+  // Constant-time compare so attackers can't brute-force CRON_SECRET via
+  // response-time side channel.
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
 
 // Per-keyword daily refresh.
 //
@@ -35,9 +46,10 @@ export async function GET(request: Request) {
 
   const headerSecret =
     request.headers.get("x-cron-secret") ??
-    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
+    "";
 
-  if (headerSecret !== secret) {
+  if (!safeCompare(headerSecret, secret)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

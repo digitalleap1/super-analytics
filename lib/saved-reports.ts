@@ -51,5 +51,5 @@ export function parseSnapshot(raw: string): SavedReportSnapshot | null {
 }
 
 export function generateShareToken(): string {
-  return randomBytes(20).toString("base64url");
+  return randomBytes(32).toString("base64url");
 }
