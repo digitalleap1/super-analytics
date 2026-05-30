@@ -182,7 +182,6 @@ export function stubGa4Overview(
   const rng = seededRng(hashString(`${seed}:ga4`));
   const sessions = Math.round((40 + rng() * 80) * days);
   const totalUsers = Math.round(sessions * (0.62 + rng() * 0.18));
-  const newUsers = Math.round(totalUsers * (0.55 + rng() * 0.3));
   const engagementRate = 0.45 + rng() * 0.25;
   const eventCount = Math.round(sessions * (4 + rng() * 6));
   const screenPageViews = Math.round(sessions * (1.8 + rng() * 1.4));
@@ -190,7 +189,6 @@ export function stubGa4Overview(
     totals: {
       sessions,
       totalUsers,
-      newUsers,
       engagementRate,
       eventCount,
       screenPageViews,
@@ -214,14 +212,12 @@ export function stubGa4Channels(seed: string, from: Date, to: Date): Ga4ChannelR
   return splits.map((s) => {
     const sessions = Math.round(total.sessions * s.w);
     const totalUsers = Math.round(sessions * (0.6 + rng() * 0.2));
-    const newUsers = Math.round(totalUsers * (0.55 + rng() * 0.3));
     const engagementRate = 0.35 + rng() * 0.35;
     const eventCount = Math.round(sessions * (3 + rng() * 6));
     return {
       channel: s.channel,
       sessions,
       totalUsers,
-      newUsers,
       engagementRate,
       eventCount,
     };

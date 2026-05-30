@@ -27,15 +27,13 @@ type FetchOpts = {
 };
 
 // NOTE: GA4 deprecated "conversions" — it's now an alias for "keyEvents", and
-// requesting both returns "Found duplicate metrics: conversions". keyEvents
-// itself is only non-zero when the property owner explicitly marks events as
-// key — which most clients haven't done — so we dropped it in favour of
-// newUsers, which is always populated and more useful for SEO acquisition
-// reporting.
+// requesting both returns "Found duplicate metrics: conversions". Neither is
+// shown right now: keyEvents only counts events the property owner has
+// explicitly marked as key (most haven't), and the user prefers to wait
+// until per-project key-event configuration ships before bringing it back.
 const OVERVIEW_METRICS = [
   "sessions",
   "totalUsers",
-  "newUsers",
   "engagementRate",
   "eventCount",
   "screenPageViews",
@@ -90,10 +88,9 @@ export async function getGa4Overview(opts: FetchOpts): Promise<Ga4Overview> {
       totals: {
         sessions: get(0),
         totalUsers: get(1),
-        newUsers: get(2),
-        engagementRate: get(3),
-        eventCount: get(4),
-        screenPageViews: get(5),
+        engagementRate: get(2),
+        eventCount: get(3),
+        screenPageViews: get(4),
       },
       source: "live",
     };
@@ -130,7 +127,6 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
         metrics: [
           { name: "sessions" },
           { name: "totalUsers" },
-          { name: "newUsers" },
           { name: "engagementRate" },
           { name: "eventCount" },
         ],
@@ -141,9 +137,8 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
       channel: r.dimensionValues?.[0]?.value ?? "(unknown)",
       sessions: Number(r.metricValues?.[0]?.value ?? 0),
       totalUsers: Number(r.metricValues?.[1]?.value ?? 0),
-      newUsers: Number(r.metricValues?.[2]?.value ?? 0),
-      engagementRate: Number(r.metricValues?.[3]?.value ?? 0),
-      eventCount: Number(r.metricValues?.[4]?.value ?? 0),
+      engagementRate: Number(r.metricValues?.[2]?.value ?? 0),
+      eventCount: Number(r.metricValues?.[3]?.value ?? 0),
     }));
     return { rows, source: "live" };
   } catch (err) {
