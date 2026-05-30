@@ -38,14 +38,26 @@ const OVERVIEW_METRICS = [
 
 function parseGa4Error(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
-  // Detect "API not enabled" — Google returns a 403 with a verbose message.
-  if (/has not been used|disabled|PERMISSION_DENIED/i.test(message)) {
+  // Detect common cases and rewrite to actionable guidance.
+  if (/has not been used|disabled/i.test(message)) {
     if (/analyticsdata/i.test(message)) {
-      return "Google Analytics Data API isn't enabled. Open Google Cloud Console → APIs & Services → Library → search 'Google Analytics Data API' → Enable.";
+      return "Google Analytics Data API isn't enabled in this Google Cloud project. Enable it at console.cloud.google.com/apis/library/analyticsdata.googleapis.com, wait ~30 seconds, then reload.";
     }
-    return "Google Analytics access denied. Make sure the connected Google account is a property user/admin in Analytics → Admin → Property access management.";
+    return "A required Google API isn't enabled. Check Google Cloud Console → APIs & Services → Enabled APIs and confirm both 'Google Analytics Admin API' and 'Google Analytics Data API' are on.";
   }
-  return message;
+  if (/insufficient.*scope|invalid_scope/i.test(message)) {
+    return "The connected Google account doesn't have GA4 read scope. Click 'Connect Google' again in project settings and grant Analytics permission when Google prompts.";
+  }
+  if (/permission|forbidden|403/i.test(message)) {
+    return "The connected Google account doesn't have access to this GA4 property. In Analytics → Admin → Property access management, add this account as a Viewer or higher.";
+  }
+  if (/not.?found|404/i.test(message)) {
+    return "The selected GA4 property ID wasn't found. Re-pick the property in project settings.";
+  }
+  if (/invalid.?credentials|unauthenticated|401/i.test(message)) {
+    return "Google credentials expired or were revoked. Re-connect Google for this project.";
+  }
+  return `Google API error: ${message}`;
 }
 
 export async function getGa4Overview(opts: FetchOpts): Promise<Ga4Overview> {
@@ -82,11 +94,12 @@ export async function getGa4Overview(opts: FetchOpts): Promise<Ga4Overview> {
       source: "live",
     };
   } catch (err) {
+    const parsed = parseGa4Error(err);
     console.error(
       `[ga4] getGa4Overview failed for property ${opts.propertyId}:`,
-      parseGa4Error(err),
+      err instanceof Error ? err.message : err,
     );
-    return stubGa4Overview(stubSeed, opts.from, opts.to);
+    return { ...stubGa4Overview(stubSeed, opts.from, opts.to), error: parsed };
   }
 }
 

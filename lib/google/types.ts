@@ -24,6 +24,9 @@ export type GscOverview = {
   };
   series: DailyMetric[];
   source: "live" | "stub";
+  // Set when source === "stub" and the cause is known (API not enabled, no
+  // access, etc.). Surfaced to the user in the project banner.
+  error?: string;
 };
 
 export type GscQueryRow = {
@@ -63,6 +66,8 @@ export type Ga4Overview = {
     screenPageViews: number;
   };
   source: "live" | "stub";
+  // Set when source === "stub" and the cause is known. Surfaced in the UI.
+  error?: string;
 };
 
 export type Ga4ChannelRow = {

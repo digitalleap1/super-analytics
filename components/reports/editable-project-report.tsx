@@ -616,6 +616,8 @@ export function EditableProjectReport(props: Props) {
             );
           }
           if (gscMismatch || ga4Mismatch) {
+            const ga4Err = props.ga4Overview.error;
+            const gscErr = props.overview.error;
             return (
               <Card className="border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100 print:hidden">
                 <p className="font-semibold">
@@ -625,37 +627,22 @@ export function EditableProjectReport(props: Props) {
                       ? "Analytics is connected, but the data call failed — sessions, users and channels below are sample numbers."
                       : "Search Console is connected, but the data call failed — clicks, impressions and queries below are sample numbers."}
                 </p>
-                {ga4Mismatch ? (
-                  <p className="mt-1 leading-relaxed">
-                    <strong>Most common fix:</strong> enable the{" "}
-                    <em>Google Analytics Data API</em> in{" "}
-                    <a
-                      href="https://console.cloud.google.com/apis/library/analyticsdata.googleapis.com"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline"
-                    >
-                      Google Cloud Console
-                    </a>{" "}
-                    (this is separate from the Admin API). If it&apos;s
-                    already enabled, verify the connected Google account is a
-                    user on the GA4 property.
+                {ga4Mismatch && ga4Err ? (
+                  <p className="mt-1.5 leading-relaxed">
+                    <strong>GA4 says:</strong> {ga4Err}
                   </p>
                 ) : null}
-                {gscMismatch ? (
-                  <p className="mt-1 leading-relaxed">
-                    <strong>Most common fix:</strong> enable the{" "}
-                    <em>Search Console API</em> in{" "}
-                    <a
-                      href="https://console.cloud.google.com/apis/library/searchconsole.googleapis.com"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline"
-                    >
-                      Google Cloud Console
-                    </a>{" "}
-                    and confirm the connected account has access to the
-                    selected site.
+                {gscMismatch && gscErr ? (
+                  <p className="mt-1.5 leading-relaxed">
+                    <strong>GSC says:</strong> {gscErr}
+                  </p>
+                ) : null}
+                {!ga4Err && !gscErr ? (
+                  <p className="mt-1 leading-relaxed text-xs">
+                    Reload once; if it persists, open the project in an
+                    incognito tab while signed into the same Google account, or
+                    check Vercel runtime logs (prefix &quot;[ga4]&quot; or
+                    &quot;[gsc]&quot;) for the underlying Google error.
                   </p>
                 ) : null}
               </Card>

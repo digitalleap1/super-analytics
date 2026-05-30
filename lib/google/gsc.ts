@@ -80,8 +80,21 @@ export async function getGscOverview(opts: FetchOpts): Promise<GscOverview> {
       position: r.position ?? 0,
     }));
     return { totals, series, source: "live" };
-  } catch {
-    return stubGscOverview(stubSeed, opts.from, opts.to);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(
+      `[gsc] getGscOverview failed for ${opts.siteUrl}:`,
+      message,
+    );
+    let parsed = `Search Console API error: ${message}`;
+    if (/has not been used|disabled/i.test(message)) {
+      parsed =
+        "Google Search Console API isn't enabled in this Google Cloud project. Enable it at console.cloud.google.com/apis/library/searchconsole.googleapis.com, wait ~30 seconds, then reload.";
+    } else if (/permission|forbidden|403/i.test(message)) {
+      parsed =
+        "The connected Google account doesn't have access to this Search Console property. In Search Console → Settings → Users and permissions, add this account.";
+    }
+    return { ...stubGscOverview(stubSeed, opts.from, opts.to), error: parsed };
   }
 }
 
