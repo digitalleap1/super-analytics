@@ -36,6 +36,18 @@ const OVERVIEW_METRICS = [
   "screenPageViews",
 ] as const;
 
+function parseGa4Error(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  // Detect "API not enabled" — Google returns a 403 with a verbose message.
+  if (/has not been used|disabled|PERMISSION_DENIED/i.test(message)) {
+    if (/analyticsdata/i.test(message)) {
+      return "Google Analytics Data API isn't enabled. Open Google Cloud Console → APIs & Services → Library → search 'Google Analytics Data API' → Enable.";
+    }
+    return "Google Analytics access denied. Make sure the connected Google account is a property user/admin in Analytics → Admin → Property access management.";
+  }
+  return message;
+}
+
 export async function getGa4Overview(opts: FetchOpts): Promise<Ga4Overview> {
   const stubSeed = `${opts.projectId}`;
   if (!opts.propertyId) return stubGa4Overview(stubSeed, opts.from, opts.to);
@@ -69,7 +81,11 @@ export async function getGa4Overview(opts: FetchOpts): Promise<Ga4Overview> {
       },
       source: "live",
     };
-  } catch {
+  } catch (err) {
+    console.error(
+      `[ga4] getGa4Overview failed for property ${opts.propertyId}:`,
+      parseGa4Error(err),
+    );
     return stubGa4Overview(stubSeed, opts.from, opts.to);
   }
 }
@@ -115,7 +131,11 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
       eventCount: Number(r.metricValues?.[5]?.value ?? 0),
     }));
     return { rows, source: "live" };
-  } catch {
+  } catch (err) {
+    console.error(
+      `[ga4] getGa4Channels failed for property ${opts.propertyId}:`,
+      parseGa4Error(err),
+    );
     return {
       rows: stubGa4Channels(stubSeed, opts.from, opts.to),
       source: "stub",

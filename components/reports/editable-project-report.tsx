@@ -595,25 +595,92 @@ export function EditableProjectReport(props: Props) {
           />
         ) : null}
 
-        {props.isStub ? (
-          <Card className="border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100 print:hidden">
-            Showing <strong>sample data</strong> — connect this project to
-            Google Search Console and Analytics in project settings to load
-            live numbers.
-          </Card>
-        ) : props.hasGsc === false ? (
-          <Card className="border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100 print:hidden">
-            Search Console isn&apos;t connected — clicks, impressions and
-            positions are sample. Connect in project settings to load real
-            numbers.
-          </Card>
-        ) : props.hasGa4 === false ? (
-          <Card className="border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100 print:hidden">
-            Analytics isn&apos;t connected — users, sessions and key events
-            are sample. Connect a GA4 property in project settings to load real
-            numbers.
-          </Card>
-        ) : null}
+        {(() => {
+          // Detect *mismatch* banners: a data source is "connected" (the
+          // project has the site/property ID set) but the actual API call
+          // returned stub data. That almost always means the corresponding
+          // Google Cloud API isn't enabled, or the OAuth account lacks
+          // access — and the user needs clear instructions to fix it.
+          const gscMismatch =
+            props.hasGsc && props.overview.source === "stub";
+          const ga4Mismatch =
+            props.hasGa4 && props.ga4Overview.source === "stub";
+
+          if (props.isStub) {
+            return (
+              <Card className="border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100 print:hidden">
+                Showing <strong>sample data</strong> — connect this project to
+                Google Search Console and Analytics in project settings to load
+                live numbers.
+              </Card>
+            );
+          }
+          if (gscMismatch || ga4Mismatch) {
+            return (
+              <Card className="border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100 print:hidden">
+                <p className="font-semibold">
+                  {ga4Mismatch && gscMismatch
+                    ? "Search Console & Analytics calls failed — showing sample numbers."
+                    : ga4Mismatch
+                      ? "Analytics is connected, but the data call failed — sessions, users and channels below are sample numbers."
+                      : "Search Console is connected, but the data call failed — clicks, impressions and queries below are sample numbers."}
+                </p>
+                {ga4Mismatch ? (
+                  <p className="mt-1 leading-relaxed">
+                    <strong>Most common fix:</strong> enable the{" "}
+                    <em>Google Analytics Data API</em> in{" "}
+                    <a
+                      href="https://console.cloud.google.com/apis/library/analyticsdata.googleapis.com"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline"
+                    >
+                      Google Cloud Console
+                    </a>{" "}
+                    (this is separate from the Admin API). If it&apos;s
+                    already enabled, verify the connected Google account is a
+                    user on the GA4 property.
+                  </p>
+                ) : null}
+                {gscMismatch ? (
+                  <p className="mt-1 leading-relaxed">
+                    <strong>Most common fix:</strong> enable the{" "}
+                    <em>Search Console API</em> in{" "}
+                    <a
+                      href="https://console.cloud.google.com/apis/library/searchconsole.googleapis.com"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline"
+                    >
+                      Google Cloud Console
+                    </a>{" "}
+                    and confirm the connected account has access to the
+                    selected site.
+                  </p>
+                ) : null}
+              </Card>
+            );
+          }
+          if (props.hasGsc === false) {
+            return (
+              <Card className="border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100 print:hidden">
+                Search Console isn&apos;t connected — clicks, impressions and
+                positions are sample. Connect in project settings to load real
+                numbers.
+              </Card>
+            );
+          }
+          if (props.hasGa4 === false) {
+            return (
+              <Card className="border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100 print:hidden">
+                Analytics isn&apos;t connected — users, sessions and key events
+                are sample. Connect a GA4 property in project settings to load
+                real numbers.
+              </Card>
+            );
+          }
+          return null;
+        })()}
 
         {/* KPI section */}
         {cfg.sections.kpis ? (
