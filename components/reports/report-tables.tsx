@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CsvExportButton } from "./csv-export-button";
+import { DeltaCell } from "./delta-cell";
 import { PrintTableButton } from "./print-table-button";
 import { SortableTable } from "./sortable-table";
 import { formatNumber, formatPercent, formatPosition } from "@/lib/utils";
@@ -18,25 +19,61 @@ type Props = {
   projectName: string;
   rangeLabel: string;
   queries: GscQueryRow[];
+  prevQueries?: GscQueryRow[] | null;
   pages: GscPageRow[];
+  prevPages?: GscPageRow[] | null;
   channels: Ga4ChannelRow[];
+  prevChannels?: Ga4ChannelRow[] | null;
   showQueries?: boolean;
   showPages?: boolean;
   showChannels?: boolean;
   rowLimit?: number;
 };
 
+function valueWithDelta(
+  current: number,
+  previous: number | null | undefined,
+  formatted: string,
+  invert = false,
+) {
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      <span className="font-medium">{formatted}</span>
+      {previous != null ? (
+        <DeltaCell current={current} previous={previous} invert={invert} />
+      ) : null}
+    </span>
+  );
+}
+
 export function ReportTables({
   projectName,
   rangeLabel,
   queries,
+  prevQueries,
   pages,
+  prevPages,
   channels,
+  prevChannels,
   showQueries = true,
   showPages = true,
   showChannels = true,
   rowLimit = 50,
 }: Props) {
+  // Build O(1) lookup maps for previous-period rows so each table cell can
+  // render a delta indicator next to the current value.
+  const prevQueryByKey = useMemo(
+    () => new Map((prevQueries ?? []).map((r) => [r.query, r])),
+    [prevQueries],
+  );
+  const prevPageByKey = useMemo(
+    () => new Map((prevPages ?? []).map((r) => [r.page, r])),
+    [prevPages],
+  );
+  const prevChannelByKey = useMemo(
+    () => new Map((prevChannels ?? []).map((r) => [r.channel, r])),
+    [prevChannels],
+  );
   // Pick the first visible tab as the default.
   const defaultTab = showQueries
     ? "queries"
@@ -51,25 +88,50 @@ export function ReportTables({
       {
         accessorKey: "clicks",
         header: "Clicks",
-        cell: (info) => formatNumber(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevQueryByKey.get(row.query);
+          return valueWithDelta(row.clicks, prev?.clicks, formatNumber(row.clicks));
+        },
       },
       {
         accessorKey: "impressions",
         header: "Impressions",
-        cell: (info) => formatNumber(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevQueryByKey.get(row.query);
+          return valueWithDelta(
+            row.impressions,
+            prev?.impressions,
+            formatNumber(row.impressions),
+          );
+        },
       },
       {
         accessorKey: "ctr",
         header: "CTR",
-        cell: (info) => formatPercent(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevQueryByKey.get(row.query);
+          return valueWithDelta(row.ctr, prev?.ctr, formatPercent(row.ctr));
+        },
       },
       {
         accessorKey: "position",
         header: "Avg position",
-        cell: (info) => formatPosition(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevQueryByKey.get(row.query);
+          return valueWithDelta(
+            row.position,
+            prev?.position,
+            formatPosition(row.position),
+            true,
+          );
+        },
       },
     ],
-    [],
+    [prevQueryByKey],
   );
 
   const pageColumns = useMemo<ColumnDef<GscPageRow, unknown>[]>(
@@ -94,25 +156,50 @@ export function ReportTables({
       {
         accessorKey: "clicks",
         header: "Clicks",
-        cell: (info) => formatNumber(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevPageByKey.get(row.page);
+          return valueWithDelta(row.clicks, prev?.clicks, formatNumber(row.clicks));
+        },
       },
       {
         accessorKey: "impressions",
         header: "Impressions",
-        cell: (info) => formatNumber(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevPageByKey.get(row.page);
+          return valueWithDelta(
+            row.impressions,
+            prev?.impressions,
+            formatNumber(row.impressions),
+          );
+        },
       },
       {
         accessorKey: "ctr",
         header: "CTR",
-        cell: (info) => formatPercent(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevPageByKey.get(row.page);
+          return valueWithDelta(row.ctr, prev?.ctr, formatPercent(row.ctr));
+        },
       },
       {
         accessorKey: "position",
         header: "Avg position",
-        cell: (info) => formatPosition(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevPageByKey.get(row.page);
+          return valueWithDelta(
+            row.position,
+            prev?.position,
+            formatPosition(row.position),
+            true,
+          );
+        },
       },
     ],
-    [],
+    [prevPageByKey],
   );
 
   const channelColumns = useMemo<ColumnDef<Ga4ChannelRow, unknown>[]>(
@@ -121,35 +208,79 @@ export function ReportTables({
       {
         accessorKey: "sessions",
         header: "Sessions",
-        cell: (info) => formatNumber(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevChannelByKey.get(row.channel);
+          return valueWithDelta(row.sessions, prev?.sessions, formatNumber(row.sessions));
+        },
       },
       {
         accessorKey: "totalUsers",
         header: "Users",
-        cell: (info) => formatNumber(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevChannelByKey.get(row.channel);
+          return valueWithDelta(
+            row.totalUsers,
+            prev?.totalUsers,
+            formatNumber(row.totalUsers),
+          );
+        },
       },
       {
         accessorKey: "engagementRate",
         header: "Engagement",
-        cell: (info) => formatPercent(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevChannelByKey.get(row.channel);
+          return valueWithDelta(
+            row.engagementRate,
+            prev?.engagementRate,
+            formatPercent(row.engagementRate),
+          );
+        },
       },
       {
         accessorKey: "keyEvents",
         header: "Key events",
-        cell: (info) => formatNumber(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevChannelByKey.get(row.channel);
+          return valueWithDelta(
+            row.keyEvents,
+            prev?.keyEvents,
+            formatNumber(row.keyEvents),
+          );
+        },
       },
       {
         accessorKey: "eventCount",
         header: "Events",
-        cell: (info) => formatNumber(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevChannelByKey.get(row.channel);
+          return valueWithDelta(
+            row.eventCount,
+            prev?.eventCount,
+            formatNumber(row.eventCount),
+          );
+        },
       },
       {
         accessorKey: "conversions",
         header: "Conversions",
-        cell: (info) => formatNumber(info.getValue<number>()),
+        cell: (info) => {
+          const row = info.row.original;
+          const prev = prevChannelByKey.get(row.channel);
+          return valueWithDelta(
+            row.conversions,
+            prev?.conversions,
+            formatNumber(row.conversions),
+          );
+        },
       },
     ],
-    [],
+    [prevChannelByKey],
   );
 
   return (

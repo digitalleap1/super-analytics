@@ -1,4 +1,5 @@
 import { requireProject } from "@/lib/projects";
+import { prisma } from "@/lib/prisma";
 import { EditableProjectReport } from "@/components/reports/editable-project-report";
 import {
   formatRangeLabel,
@@ -35,11 +36,18 @@ export default async function ProjectPage({
   const { range, compare } = parseRangeFromSearchParams(searchParams);
   const prev = compare ? previousPeriod(range) : null;
 
-  const { config, template } = await loadTemplateForProject({
-    projectId: project.id,
-    workspaceId: workspace.id,
-    templateId: project.templateId,
-  });
+  const [{ config, template }, allTemplates] = await Promise.all([
+    loadTemplateForProject({
+      projectId: project.id,
+      workspaceId: workspace.id,
+      templateId: project.templateId,
+    }),
+    prisma.reportTemplate.findMany({
+      where: { workspaceId: workspace.id },
+      orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+      select: { id: true, name: true, isDefault: true },
+    }),
+  ]);
 
   const baseOpts = {
     userId: user.id,
@@ -124,21 +132,59 @@ export default async function ProjectPage({
       )
     : null;
 
-  const prevGa4 = prev
-    ? await withCache(
-        project.id,
-        "ga4_overview",
-        { from: ymd(prev.from), to: ymd(prev.to), suffix: "prev" },
-        () =>
-          getGa4Overview({
-            userId: user.id,
-            projectId: project.id,
-            propertyId: project.ga4PropertyId,
-            from: prev.from,
-            to: prev.to,
-          }),
-      )
-    : null;
+  const [prevGa4, prevQueries, prevPages, prevChannels] = prev
+    ? await Promise.all([
+        withCache(
+          project.id,
+          "ga4_overview",
+          { from: ymd(prev.from), to: ymd(prev.to), suffix: "prev" },
+          () =>
+            getGa4Overview({
+              userId: user.id,
+              projectId: project.id,
+              propertyId: project.ga4PropertyId,
+              from: prev.from,
+              to: prev.to,
+            }),
+        ),
+        withCache(
+          project.id,
+          "gsc_queries",
+          { from: ymd(prev.from), to: ymd(prev.to), suffix: "prev" },
+          () =>
+            getGscQueries({
+              ...baseOpts,
+              from: prev.from,
+              to: prev.to,
+            }),
+        ),
+        withCache(
+          project.id,
+          "gsc_pages",
+          { from: ymd(prev.from), to: ymd(prev.to), suffix: "prev" },
+          () =>
+            getGscPages({
+              ...baseOpts,
+              domain: project.domain,
+              from: prev.from,
+              to: prev.to,
+            }),
+        ),
+        withCache(
+          project.id,
+          "ga4_channels",
+          { from: ymd(prev.from), to: ymd(prev.to), suffix: "prev" },
+          () =>
+            getGa4Channels({
+              userId: user.id,
+              projectId: project.id,
+              propertyId: project.ga4PropertyId,
+              from: prev.from,
+              to: prev.to,
+            }),
+        ),
+      ])
+    : [null, null, null, null];
 
   // The stub banner reflects the project's connection state, NOT the live API
   // result. If the project IS connected (GSC site URL + GA4 property both set)
@@ -182,8 +228,11 @@ export default async function ProjectPage({
       ga4Overview={ga4Overview}
       prevGa4={prevGa4}
       queries={queries.rows}
+      prevQueries={prevQueries?.rows ?? null}
       pages={pages.rows}
+      prevPages={prevPages?.rows ?? null}
       channels={ga4Channels.rows}
+      prevChannels={prevChannels?.rows ?? null}
       keywords={keywords}
       backlinks={backlinks}
       backlinkMonthly={backlinkMonthly}
@@ -194,6 +243,8 @@ export default async function ProjectPage({
       summary={summary}
       analysisNotes={project.analysisNotes}
       otherTasks={project.otherTasks}
+      availableTemplates={allTemplates}
+      currentTemplateId={project.templateId}
     />
   );
 }

@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 type Member = {
   id: string;
@@ -39,6 +40,11 @@ type Props = {
   canManage: boolean;
 };
 
+const ROLE_LABEL: Record<string, string> = {
+  viewer: "Viewer",
+  editor: "Editor",
+};
+
 export function TeamAccessSection({
   projectId,
   members,
@@ -48,23 +54,31 @@ export function TeamAccessSection({
 }: Props) {
   const router = useRouter();
   const [pickUserId, setPickUserId] = useState<string>("");
-  const [isPending, startTransition] = useTransition();
+  const [pickRole, setPickRole] = useState<string>("viewer");
+  const [busyMemberId, setBusyMemberId] = useState<string | null>(null);
+  const [isAdding, startAdding] = useTransition();
 
   const sortedCandidates = useMemo(
     () =>
-      [...candidates].sort((a, b) =>
-        (a.name ?? a.email).localeCompare(b.name ?? b.email),
-      ),
+      [...candidates]
+        .sort((a, b) =>
+          (a.name ?? a.email).localeCompare(b.name ?? b.email),
+        )
+        .map((c) => ({
+          value: c.userId,
+          label: c.name ?? c.email,
+          helper: c.email,
+        })),
     [candidates],
   );
 
   function add() {
     if (!pickUserId) return;
-    startTransition(async () => {
+    startAdding(async () => {
       const res = await fetch(`/api/projects/${projectId}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: pickUserId, role: "viewer" }),
+        body: JSON.stringify({ userId: pickUserId, role: pickRole }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -73,13 +87,43 @@ export function TeamAccessSection({
       }
       toast.success("Access granted");
       setPickUserId("");
+      setPickRole("viewer");
       router.refresh();
     });
   }
 
-  function remove(m: Member) {
+  async function changeRole(m: Member, newRole: string) {
+    if (newRole === m.role) return;
+    setBusyMemberId(m.id);
+    try {
+      const res = await fetch(
+        `/api/projects/${projectId}/members/${m.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: newRole }),
+        },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error(body.error ?? "Could not update role");
+        return;
+      }
+      toast.success(
+        `${m.name ?? m.email} is now a ${ROLE_LABEL[newRole] ?? newRole}`,
+      );
+      router.refresh();
+    } catch {
+      toast.error("Network error");
+    } finally {
+      setBusyMemberId(null);
+    }
+  }
+
+  async function remove(m: Member) {
     if (!confirm(`Revoke ${m.email}'s access to this project?`)) return;
-    startTransition(async () => {
+    setBusyMemberId(m.id);
+    try {
       const res = await fetch(
         `/api/projects/${projectId}/members/${m.id}`,
         { method: "DELETE" },
@@ -91,11 +135,15 @@ export function TeamAccessSection({
       }
       toast.success(`Removed ${m.email}`);
       router.refresh();
-    });
+    } catch {
+      toast.error("Network error");
+    } finally {
+      setBusyMemberId(null);
+    }
   }
 
   return (
-    <div className="space-y-3 rounded-lg border bg-card p-4">
+    <div className="space-y-4 rounded-lg border bg-card p-4">
       {implicitAdmins.length > 0 ? (
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -126,38 +174,70 @@ export function TeamAccessSection({
           </p>
         ) : (
           <ul className="mt-2 divide-y rounded-md border">
-            {members.map((m) => (
-              <li
-                key={m.id}
-                className="flex items-center justify-between gap-3 px-3 py-2"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">
-                    {m.name ?? m.email}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground font-mono">
-                    {m.email}
-                  </p>
-                </div>
-                {canManage ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => remove(m)}
-                    disabled={isPending}
-                    aria-label="Remove"
-                  >
-                    {isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+            {members.map((m) => {
+              const busy = busyMemberId === m.id;
+              return (
+                <li
+                  key={m.id}
+                  className="flex items-center justify-between gap-3 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {m.name ?? m.email}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground font-mono">
+                      {m.email}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {canManage ? (
+                      <Select
+                        value={m.role}
+                        onValueChange={(v) => changeRole(m, v)}
+                        disabled={busy}
+                      >
+                        <SelectTrigger className="h-8 w-[110px] text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="viewer">Viewer</SelectItem>
+                          <SelectItem value="editor">Editor</SelectItem>
+                        </SelectContent>
+                      </Select>
                     ) : (
-                      <X className="h-4 w-4" />
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                        {ROLE_LABEL[m.role] ?? m.role}
+                      </span>
                     )}
-                  </Button>
-                ) : null}
-              </li>
-            ))}
+                    {canManage ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(m)}
+                        disabled={busy}
+                        aria-label="Remove"
+                        className="h-8 w-8"
+                      >
+                        {busy ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <X className="h-4 w-4" />
+                        )}
+                      </Button>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
+        {canManage && members.length > 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            <strong>Viewer</strong> can open the project and read everything.{" "}
+            <strong>Editor</strong> can also add backlinks, save reports, and
+            edit the analysis/other-tasks text.
+          </p>
+        ) : null}
       </div>
 
       {canManage ? (
@@ -167,30 +247,45 @@ export function TeamAccessSection({
             this project.
           </p>
         ) : (
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="flex-1 min-w-[200px] space-y-1">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px_auto]">
+            <div className="space-y-1">
               <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Grant access to
               </label>
-              <Select value={pickUserId} onValueChange={setPickUserId}>
+              <SearchableSelect
+                value={pickUserId}
+                onChange={setPickUserId}
+                options={sortedCandidates}
+                placeholder="Pick a workspace member…"
+                emptyMessage="No matching members"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Role
+              </label>
+              <Select value={pickRole} onValueChange={setPickRole}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pick a workspace member..." />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {sortedCandidates.map((c) => (
-                    <SelectItem key={c.userId} value={c.userId}>
-                      {c.name ?? c.email} ({c.email})
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="viewer">Viewer</SelectItem>
+                  <SelectItem value="editor">Editor</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={add} disabled={!pickUserId || isPending}>
-              {isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Grant access
-            </Button>
+            <div className="space-y-1 sm:pt-5">
+              <Button
+                onClick={add}
+                disabled={!pickUserId || isAdding}
+                className="w-full sm:w-auto"
+              >
+                {isAdding ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Grant
+              </Button>
+            </div>
           </div>
         )
       ) : null}

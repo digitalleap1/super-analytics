@@ -32,8 +32,11 @@ export type SavedReportSnapshot = {
   ga4Overview: Ga4Overview;
   prevGa4: Ga4Overview | null;
   queries: GscQueryRow[];
+  prevQueries?: GscQueryRow[] | null;
   pages: GscPageRow[];
+  prevPages?: GscPageRow[] | null;
   channels: Ga4ChannelRow[];
+  prevChannels?: Ga4ChannelRow[] | null;
   keywords: KeywordRow[];
   backlinks: BacklinkRow[];
   backlinkMonthly: BacklinkMonthBucket[];

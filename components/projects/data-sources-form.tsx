@@ -1,19 +1,13 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 type GscSite = { siteUrl: string; permissionLevel: string };
 type Ga4Property = {
@@ -103,6 +97,25 @@ export function DataSourcesForm({ projectId, initial }: Props) {
     });
   }
 
+  const siteOptions = useMemo(
+    () =>
+      (sites ?? []).map((s) => ({
+        value: s.siteUrl,
+        label: s.siteUrl,
+        helper: s.permissionLevel,
+      })),
+    [sites],
+  );
+  const propertyOptions = useMemo(
+    () =>
+      (properties ?? []).map((p) => ({
+        value: p.propertyId,
+        label: p.displayName,
+        helper: `${p.accountDisplayName} · ${p.propertyId}`,
+      })),
+    [properties],
+  );
+
   return (
     <div className="space-y-4">
       {loadError ? (
@@ -111,57 +124,34 @@ export function DataSourcesForm({ projectId, initial }: Props) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Search Console site</Label>
-          <Select value={gscSiteUrl} onValueChange={setGscSiteUrl}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a site" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>Not connected</SelectItem>
-              {sites === null ? (
-                <SelectItem disabled value="__loading_sites__">
-                  Loading…
-                </SelectItem>
-              ) : (
-                sites.map((s) => (
-                  <SelectItem key={s.siteUrl} value={s.siteUrl}>
-                    {s.siteUrl}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={gscSiteUrl}
+            onChange={setGscSiteUrl}
+            options={siteOptions}
+            loading={sites === null}
+            placeholder="Select a site"
+            emptyMessage="No matching sites"
+            noneOption={{ value: NONE, label: "Not connected" }}
+          />
           <p className="text-xs text-muted-foreground">
-            Either a verified <span className="font-mono">sc-domain:</span>{" "}
-            property or a specific URL prefix.
+            Type to filter — works across hundreds of properties. Pick the{" "}
+            <span className="font-mono">sc-domain:</span> property or a specific
+            URL prefix.
           </p>
         </div>
         <div className="space-y-2">
           <Label>GA4 property</Label>
-          <Select value={ga4PropertyId} onValueChange={setGa4PropertyId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a property" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>Not connected</SelectItem>
-              {properties === null ? (
-                <SelectItem disabled value="__loading_props__">
-                  Loading…
-                </SelectItem>
-              ) : (
-                properties.map((p) => (
-                  <SelectItem key={p.propertyId} value={p.propertyId}>
-                    {p.displayName}
-                    <span className="ml-2 text-muted-foreground">
-                      ({p.propertyId})
-                    </span>
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={ga4PropertyId}
+            onChange={setGa4PropertyId}
+            options={propertyOptions}
+            loading={properties === null}
+            placeholder="Select a property"
+            emptyMessage="No matching properties"
+            noneOption={{ value: NONE, label: "Not connected" }}
+          />
           <p className="text-xs text-muted-foreground">
-            The numeric property ID — no <span className="font-mono">properties/</span>{" "}
-            prefix needed.
+            Type the account, property name, or numeric ID to find it fast.
           </p>
         </div>
       </div>

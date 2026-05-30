@@ -71,6 +71,7 @@ import { QuickShareButton } from "@/components/reports/quick-share-button";
 import { ReportLogoHeader } from "@/components/reports/report-logo-header";
 import { ReportSummaryCard } from "@/components/reports/report-summary-card";
 import { EditableTextSection } from "@/components/reports/editable-text-section";
+import { QuickTemplateSwitcher } from "@/components/reports/quick-template-switcher";
 import type { ReportSummary } from "@/lib/report-summary";
 import type {
   Ga4ChannelRow,
@@ -100,8 +101,11 @@ type Props = {
   ga4Overview: Ga4Overview;
   prevGa4: Ga4Overview | null;
   queries: GscQueryRow[];
+  prevQueries?: GscQueryRow[] | null;
   pages: GscPageRow[];
+  prevPages?: GscPageRow[] | null;
   channels: Ga4ChannelRow[];
+  prevChannels?: Ga4ChannelRow[] | null;
   keywords: KeywordRow[];
   backlinks: BacklinkRow[];
   backlinkMonthly: BacklinkMonthBucket[];
@@ -119,6 +123,10 @@ type Props = {
   // Free-text fields (per-project), shown as toggleable sections.
   analysisNotes?: string | null;
   otherTasks?: string | null;
+  // List of workspace templates so the user can switch from the toolbar
+  // without going to project settings.
+  availableTemplates?: { id: string; name: string; isDefault: boolean }[];
+  currentTemplateId?: string | null;
 };
 
 function SectionHeader({
@@ -361,30 +369,17 @@ export function EditableProjectReport(props: Props) {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
         {/* Toolbar — the logo + title appear inside #report-pdf below
-            (ReportLogoHeader), so the toolbar shows only action controls
-            and a small breadcrumb-style template reference. */}
-        <div className="min-w-0">
-          <a
-            href={`https://${props.project.domain}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            {props.project.domain}
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-          {props.template ? (
-            <p className="text-xs text-muted-foreground">
-              Template:{" "}
-              <Link
-                href={`/settings/templates/${props.template.id}`}
-                className="text-primary hover:underline"
-              >
-                {props.template.name}
-              </Link>
-            </p>
-          ) : null}
-        </div>
+            (ReportLogoHeader). The toolbar shows the domain link plus action
+            controls (date picker, template switcher, exports, etc.). */}
+        <a
+          href={`https://${props.project.domain}`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          {props.project.domain}
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
         <div className="flex flex-wrap items-center gap-2">
           {!editing ? (
             <>
@@ -406,6 +401,13 @@ export function EditableProjectReport(props: Props) {
                 rangeLabel={props.rangeLabel}
                 branding={cfg.branding.headerText}
               />
+              {props.mode !== "snapshot" && props.availableTemplates ? (
+                <QuickTemplateSwitcher
+                  projectId={props.project.id}
+                  currentTemplateId={props.currentTemplateId ?? null}
+                  templates={props.availableTemplates}
+                />
+              ) : null}
               {props.mode !== "snapshot" ? (
                 <>
                   <QuickShareButton
@@ -431,8 +433,11 @@ export function EditableProjectReport(props: Props) {
                       ga4Overview: props.ga4Overview,
                       prevGa4: props.prevGa4,
                       queries: props.queries,
+                      prevQueries: props.prevQueries ?? null,
                       pages: props.pages,
+                      prevPages: props.prevPages ?? null,
                       channels: props.channels,
+                      prevChannels: props.prevChannels ?? null,
                       keywords: props.keywords,
                       backlinks: props.backlinks,
                       backlinkMonthly: props.backlinkMonthly,
@@ -464,8 +469,11 @@ export function EditableProjectReport(props: Props) {
                       ga4Overview: props.ga4Overview,
                       prevGa4: props.prevGa4,
                       queries: props.queries,
+                      prevQueries: props.prevQueries ?? null,
                       pages: props.pages,
+                      prevPages: props.prevPages ?? null,
                       channels: props.channels,
+                      prevChannels: props.prevChannels ?? null,
                       keywords: props.keywords,
                       backlinks: props.backlinks,
                       backlinkMonthly: props.backlinkMonthly,
@@ -786,8 +794,11 @@ export function EditableProjectReport(props: Props) {
               projectName={props.project.name}
               rangeLabel={`${props.reportPeriodLabel} · ${props.rangeLabel}`}
               queries={cfg.sections.topQueries ? props.queries : []}
+              prevQueries={props.prevQueries}
               pages={cfg.sections.topPages ? props.pages : []}
+              prevPages={props.prevPages}
               channels={cfg.sections.ga4Channels ? props.channels : []}
+              prevChannels={props.prevChannels}
               showQueries={cfg.sections.topQueries}
               showPages={cfg.sections.topPages}
               showChannels={cfg.sections.ga4Channels}
