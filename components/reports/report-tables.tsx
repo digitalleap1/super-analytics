@@ -266,19 +266,6 @@ export function ReportTables({
           );
         },
       },
-      {
-        accessorKey: "conversions",
-        header: "Conversions",
-        cell: (info) => {
-          const row = info.row.original;
-          const prev = prevChannelByKey.get(row.channel);
-          return valueWithDelta(
-            row.conversions,
-            prev?.conversions,
-            formatNumber(row.conversions),
-          );
-        },
-      },
     ],
     [prevChannelByKey],
   );
@@ -418,7 +405,6 @@ export function ReportTables({
                 { key: "engagementRate", header: "Engagement" },
                 { key: "keyEvents", header: "Key events" },
                 { key: "eventCount", header: "Events" },
-                { key: "conversions", header: "Conversions" },
               ]}
             />
             <PrintTableButton
@@ -433,7 +419,6 @@ export function ReportTables({
                   engagementRate: formatPercent(r.engagementRate),
                   keyEvents: formatNumber(r.keyEvents),
                   eventCount: formatNumber(r.eventCount),
-                  conversions: formatNumber(r.conversions),
                 })) as Record<string, unknown>[]
               }
               columns={[
@@ -443,7 +428,6 @@ export function ReportTables({
                 { key: "engagementRate", header: "Engagement" },
                 { key: "keyEvents", header: "Key events" },
                 { key: "eventCount", header: "Events" },
-                { key: "conversions", header: "Conversions" },
               ]}
             />
           </div>

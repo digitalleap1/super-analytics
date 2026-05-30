@@ -26,11 +26,13 @@ type FetchOpts = {
   to: Date;
 };
 
+// NOTE: GA4 deprecated "conversions" — it's now an alias for "keyEvents".
+// Requesting both in the same report returns "Found duplicate metrics:
+// conversions". We track only keyEvents going forward.
 const OVERVIEW_METRICS = [
   "sessions",
   "totalUsers",
   "engagementRate",
-  "conversions",
   "keyEvents",
   "eventCount",
   "screenPageViews",
@@ -86,10 +88,9 @@ export async function getGa4Overview(opts: FetchOpts): Promise<Ga4Overview> {
         sessions: get(0),
         totalUsers: get(1),
         engagementRate: get(2),
-        conversions: get(3),
-        keyEvents: get(4),
-        eventCount: get(5),
-        screenPageViews: get(6),
+        keyEvents: get(3),
+        eventCount: get(4),
+        screenPageViews: get(5),
       },
       source: "live",
     };
@@ -127,7 +128,6 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
           { name: "sessions" },
           { name: "totalUsers" },
           { name: "engagementRate" },
-          { name: "conversions" },
           { name: "keyEvents" },
           { name: "eventCount" },
         ],
@@ -139,9 +139,8 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
       sessions: Number(r.metricValues?.[0]?.value ?? 0),
       totalUsers: Number(r.metricValues?.[1]?.value ?? 0),
       engagementRate: Number(r.metricValues?.[2]?.value ?? 0),
-      conversions: Number(r.metricValues?.[3]?.value ?? 0),
-      keyEvents: Number(r.metricValues?.[4]?.value ?? 0),
-      eventCount: Number(r.metricValues?.[5]?.value ?? 0),
+      keyEvents: Number(r.metricValues?.[3]?.value ?? 0),
+      eventCount: Number(r.metricValues?.[4]?.value ?? 0),
     }));
     return { rows, source: "live" };
   } catch (err) {
