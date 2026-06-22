@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { shareBaseUrl } from "@/lib/share-url";
 
 type Props = {
   projectId: string;
@@ -24,9 +25,7 @@ export function SavedReportShare({
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const baseUrl =
-    typeof window !== "undefined" ? window.location.origin : "";
-  const shareUrl = token ? `${baseUrl}/r/${token}` : null;
+  const shareUrl = token ? `${shareBaseUrl()}/r/${token}` : null;
 
   function generate() {
     startTransition(async () => {

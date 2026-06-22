@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getApiProject } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { generateShareToken } from "@/lib/saved-reports";
+import { shareBaseUrl } from "@/lib/share-url";
 
 const createSchema = z.object({
   name: z.string().min(1).max(200),
@@ -97,10 +98,8 @@ export async function POST(
     data: { analysisNotes: null, otherTasks: null },
   });
 
-  const baseUrl =
-    process.env.NEXTAUTH_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
   const shareUrl = created.shareToken
-    ? `${baseUrl}/r/${created.shareToken}`
+    ? `${shareBaseUrl()}/r/${created.shareToken}`
     : null;
 
   return NextResponse.json(

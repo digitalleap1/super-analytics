@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getApiProject } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { generateShareToken } from "@/lib/saved-reports";
+import { shareBaseUrl } from "@/lib/share-url";
 
 // POST: create-or-rotate a shareable token for this report.
 // DELETE: revoke the existing token (anyone holding the link gets a 404).
@@ -39,11 +40,9 @@ export async function POST(
     select: { shareToken: true },
   });
 
-  const baseUrl =
-    process.env.NEXTAUTH_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
   return NextResponse.json({
     token: updated.shareToken,
-    url: `${baseUrl}/r/${updated.shareToken}`,
+    url: `${shareBaseUrl()}/r/${updated.shareToken}`,
   });
 }
 
