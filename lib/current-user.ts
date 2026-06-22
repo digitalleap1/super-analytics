@@ -37,11 +37,18 @@ export async function getEffectiveUser(): Promise<EffectiveUser> {
   return getDefaultUser();
 }
 
+// The default user is stable for the lifetime of a warm function instance, so
+// cache it to avoid an extra DB round-trip on every request (login is disabled,
+// so this lookup would otherwise run for every page view).
+let defaultUserCache: EffectiveUser | null = null;
+
 async function getDefaultUser(): Promise<EffectiveUser> {
+  if (defaultUserCache) return defaultUserCache;
+
   const preferred = process.env.DEFAULT_USER_EMAIL;
   if (preferred) {
     const u = await prisma.user.findUnique({ where: { email: preferred } });
-    if (u) return shape(u);
+    if (u) return (defaultUserCache = shape(u));
   }
 
   // Owner of the workspace with the most projects → dashboard shows real data.
@@ -55,7 +62,7 @@ async function getDefaultUser(): Promise<EffectiveUser> {
   owners.sort(
     (a, b) => b.workspace._count.projects - a.workspace._count.projects,
   );
-  if (owners[0]?.user) return shape(owners[0].user);
+  if (owners[0]?.user) return (defaultUserCache = shape(owners[0].user));
 
   // Fallback: any user at all.
   const anyUser = await prisma.user.findFirst({
@@ -66,5 +73,5 @@ async function getDefaultUser(): Promise<EffectiveUser> {
       "Login is disabled but no users exist to use as the default account.",
     );
   }
-  return shape(anyUser);
+  return (defaultUserCache = shape(anyUser));
 }
