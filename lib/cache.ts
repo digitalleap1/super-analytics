@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 
 const TTL_MS = 6 * 60 * 60 * 1000;
+// Sample/stub responses (Google not connected or token revoked) are cached only
+// briefly so the UI stays fast instead of re-running failing Google calls on
+// every page view — but they refresh quickly once a project reconnects.
+const STUB_TTL_MS = 10 * 60 * 1000;
 
 export type CacheType =
   | "gsc_overview"
@@ -66,15 +70,26 @@ export async function withCache<T>(
   loader: () => Promise<T>,
 ): Promise<T> {
   const cacheKey = buildCacheKey(type, keyParts);
-  const cached = await readCache<T>(projectId, cacheKey);
-  // Treat a cached stub as a cache miss. Stubs were poisoning the cache after
-  // a project was created but before Google was connected — re-fetch every
-  // time until we get live data, then cache that.
-  if (cached && (cached as { source?: string })?.source !== "stub") return cached;
-  const fresh = await loader();
-  if ((fresh as { source?: string })?.source !== "stub") {
-    await writeCache(projectId, cacheKey, type, fresh);
+  const row = await prisma.reportCache.findUnique({
+    where: { projectId_cacheKey: { projectId, cacheKey } },
+  });
+  if (row) {
+    let data: T | null = null;
+    try {
+      data = JSON.parse(row.payload) as T;
+    } catch {
+      data = null;
+    }
+    if (data) {
+      // Live data is cached for 6h; sample/stub data only briefly so it stays
+      // fast but flips to live soon after a project reconnects.
+      const isStub = (data as { source?: string })?.source === "stub";
+      const ttl = isStub ? STUB_TTL_MS : TTL_MS;
+      if (Date.now() - row.fetchedAt.getTime() <= ttl) return data;
+    }
   }
+  const fresh = await loader();
+  await writeCache(projectId, cacheKey, type, fresh);
   return fresh;
 }
 

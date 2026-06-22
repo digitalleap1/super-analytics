@@ -139,11 +139,21 @@ export async function getValidProjectGoogleAccessToken(
     grant_type: "refresh_token",
     refresh_token: account.refresh_token,
   });
-  const res = await fetch(OAUTH_TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  let res: Response;
+  try {
+    res = await fetch(OAUTH_TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+      signal: controller.signal,
+    });
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) return null;
 
   const tokens = (await res.json()) as {

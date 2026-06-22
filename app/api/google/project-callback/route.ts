@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { auth } from "@/lib/auth";
+import { getEffectiveUser } from "@/lib/current-user";
 import { canUserAccessProject } from "@/lib/access";
+import { clearProjectCache } from "@/lib/cache";
 import { prisma } from "@/lib/prisma";
 import {
   exchangeCodeForTokens,
@@ -39,20 +40,11 @@ export async function GET(request: Request) {
     return backToProject(projectId, url, "error", error ?? "missing_code");
   }
 
-  // Anyone-with-the-state attack mitigation: the user who completes the
-  // callback must actually be able to access the project they're trying to
-  // connect.
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.redirect(
-      new URL(
-        `/login?from=${encodeURIComponent(`/projects/${projectId}/settings`)}`,
-        url,
-      ),
-    );
-  }
+  // Login is disabled — attribute the connection to the effective (default)
+  // user, who must still be able to access the project being connected.
+  const user = await getEffectiveUser();
   const ok = await canUserAccessProject({
-    userId: session.user.id,
+    userId: user.id,
     projectId,
   });
   if (!ok) {
@@ -97,7 +89,7 @@ export async function GET(request: Request) {
       expires_at: now + (tokens.expires_in ?? 3600),
       token_type: tokens.token_type,
       scope: tokens.scope,
-      connectedById: session.user.id,
+      connectedById: user.id,
     },
     update: {
       provider: "google",
@@ -108,10 +100,13 @@ export async function GET(request: Request) {
       expires_at: now + (tokens.expires_in ?? 3600),
       token_type: tokens.token_type,
       scope: tokens.scope,
-      connectedById: session.user.id,
+      connectedById: user.id,
       connectedAt: new Date(),
     },
   });
+
+  // Drop any cached sample/stub data so the next page load fetches live data.
+  await clearProjectCache(projectId);
 
   return backToProject(projectId, url, "connected");
 }
