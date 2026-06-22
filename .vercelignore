@@ -1,0 +1,7 @@
+# Never upload local secrets or the local SQLite dev database to Vercel.
+# Production env vars live in the Vercel project settings; the DB is Neon Postgres.
+.env
+.env.*
+prisma/dev.db
+prisma/*.db
+prisma/*.db-journal
