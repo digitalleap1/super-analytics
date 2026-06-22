@@ -13,6 +13,8 @@ export async function exportElementToPng(
     useCORS: true,
     logging: false,
     windowWidth: element.scrollWidth,
+    ignoreElements: (el) =>
+      el instanceof HTMLElement && el.classList.contains("print:hidden"),
   });
 
   await new Promise<void>((resolve, reject) => {
