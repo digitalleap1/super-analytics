@@ -5,7 +5,7 @@ import Google from "next-auth/providers/google";
 // This is imported by middleware.ts where Edge runtime is required.
 // The full config in lib/auth.ts extends this with the PrismaAdapter and Credentials provider.
 
-const protectedPrefixes = ["/dashboard", "/projects", "/settings"];
+// Login is disabled — the app is open and opens straight to the dashboard.
 const authPrefixes = ["/login", "/register"];
 
 export const authConfig = {
@@ -37,26 +37,14 @@ export const authConfig = {
     }),
   ],
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
+    authorized({ request: { nextUrl } }) {
+      // Login is disabled — allow everything. Send anyone landing on the auth
+      // pages straight to the dashboard.
       const path = nextUrl.pathname;
-
       const isAuthPage = authPrefixes.some((p) => path.startsWith(p));
-      const isProtected = protectedPrefixes.some((p) => path.startsWith(p));
-
       if (isAuthPage) {
-        if (isLoggedIn) {
-          return Response.redirect(new URL("/dashboard", nextUrl));
-        }
-        return true;
+        return Response.redirect(new URL("/dashboard", nextUrl));
       }
-
-      if (isProtected && !isLoggedIn) {
-        const loginUrl = new URL("/login", nextUrl);
-        loginUrl.searchParams.set("from", path);
-        return Response.redirect(loginUrl);
-      }
-
       return true;
     },
     async jwt({ token, user, account }) {

@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, FileText, ShieldCheck, Users } from "lucide-react";
 
-import { auth } from "@/lib/auth";
+import { getEffectiveUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { GoogleConnect } from "@/components/settings/google-connect";
 import { getCurrentWorkspaceForUser } from "@/lib/workspaces";
@@ -18,8 +17,7 @@ export default async function SettingsPage({
 }: {
   searchParams: { [k: string]: string | string[] | undefined };
 }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  const session = { user: await getEffectiveUser() };
 
   const googleAccount = await prisma.account.findFirst({
     where: { userId: session.user.id, provider: "google" },

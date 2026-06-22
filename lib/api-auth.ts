@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { auth } from "@/lib/auth";
+import { getEffectiveUser, type EffectiveUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import {
   ensureUserHasWorkspace,
@@ -8,15 +8,16 @@ import {
   type WorkspaceForUser,
 } from "@/lib/workspaces";
 
-export async function getApiUser() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return {
-      user: null,
-      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-    };
-  }
-  return { user: session.user, response: null };
+// Login is disabled — every request resolves to the effective (default) user,
+// so API routes never return 401 for lack of a session. The return type keeps
+// the original null-user union so existing `if (!user) return response` guards
+// in routes still narrow `response` to a NextResponse (that branch is now dead).
+export async function getApiUser(): Promise<
+  | { user: EffectiveUser; response: null }
+  | { user: null; response: NextResponse }
+> {
+  const user = await getEffectiveUser();
+  return { user, response: null };
 }
 
 // Returns the user's current workspace. Auto-creates one if missing so we

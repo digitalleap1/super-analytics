@@ -1,6 +1,4 @@
-import { redirect } from "next/navigation";
-
-import { auth } from "@/lib/auth";
+import { getEffectiveUser } from "@/lib/current-user";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import {
@@ -14,19 +12,16 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/login");
-  }
+  const current = await getEffectiveUser();
 
   const user = {
-    name: session.user.name,
-    email: session.user.email,
-    image: session.user.image,
+    name: current.name,
+    email: current.email,
+    image: current.image,
   };
 
-  let workspace = await getCurrentWorkspaceForUser(session.user.id);
-  if (!workspace) workspace = await ensureUserHasWorkspace(session.user.id);
+  let workspace = await getCurrentWorkspaceForUser(current.id);
+  if (!workspace) workspace = await ensureUserHasWorkspace(current.id);
   const isAdmin = isWorkspaceAdmin(workspace.role);
 
   return (

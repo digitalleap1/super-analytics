@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth";
+import { getEffectiveUser } from "@/lib/current-user";
 import { prisma } from "@/lib/prisma";
 import { canUserAccessProject, getProjectAccess } from "@/lib/access";
 import {
@@ -9,12 +9,9 @@ import {
   type WorkspaceForUser,
 } from "@/lib/workspaces";
 
+// Login is disabled — resolve the effective (default) user instead of gating.
 export async function requireUser() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/login");
-  }
-  return session.user;
+  return getEffectiveUser();
 }
 
 // Returns the user's current workspace. If they somehow don't have one (e.g.
