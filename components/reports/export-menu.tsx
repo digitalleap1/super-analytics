@@ -21,6 +21,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import type { ReportPdfData } from "@/lib/exports/pdf-report";
+
 type Format = "pdf" | "ppt" | "png";
 
 type Props = {
@@ -32,6 +34,9 @@ type Props = {
   periodLabel: string;
   rangeLabel: string;
   branding?: string | null;
+  // When provided, the PDF is built natively from this data (proper tables, no
+  // screenshot). Falls back to the DOM-capture exporter when absent.
+  reportData?: ReportPdfData;
 };
 
 const LABELS: Record<Format, string> = {
@@ -52,8 +57,13 @@ export function ExportMenu(props: Props) {
     setBusy(format);
     try {
       if (format === "pdf") {
-        const { exportElementToPdf } = await import("@/lib/exports/pdf");
-        await exportElementToPdf(el, props.filename);
+        if (props.reportData) {
+          const { exportReportToPdf } = await import("@/lib/exports/pdf-report");
+          await exportReportToPdf(props.reportData);
+        } else {
+          const { exportElementToPdf } = await import("@/lib/exports/pdf");
+          await exportElementToPdf(el, props.filename);
+        }
       } else if (format === "ppt") {
         const { exportElementToPpt } = await import("@/lib/exports/ppt");
         await exportElementToPpt({

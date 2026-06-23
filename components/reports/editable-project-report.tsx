@@ -62,7 +62,11 @@ import {
 } from "@/lib/templates";
 import { cn, formatNumber, formatPosition } from "@/lib/utils";
 import type { KeywordRow } from "@/lib/keywords";
-import type { BacklinkMonthBucket, BacklinkRow } from "@/lib/backlinks";
+import {
+  categoryMeta,
+  type BacklinkMonthBucket,
+  type BacklinkRow,
+} from "@/lib/backlinks";
 import { BacklinksSection } from "@/components/backlinks/backlinks-section";
 import { SaveReportDialog } from "@/components/reports/save-report-dialog";
 import { QuickShareButton } from "@/components/reports/quick-share-button";
@@ -70,7 +74,7 @@ import { ReportLogoHeader } from "@/components/reports/report-logo-header";
 import { ReportSummaryCard } from "@/components/reports/report-summary-card";
 import { EditableTextSection } from "@/components/reports/editable-text-section";
 import { QuickTemplateSwitcher } from "@/components/reports/quick-template-switcher";
-import type { ReportSummary } from "@/lib/report-summary";
+import { formatBulletValue, type ReportSummary } from "@/lib/report-summary";
 import type {
   Ga4ChannelRow,
   Ga4Overview,
@@ -465,6 +469,57 @@ export function EditableProjectReport(props: Props) {
                 periodLabel={props.reportPeriodLabel}
                 rangeLabel={props.rangeLabel}
                 branding={cfg.branding.headerText}
+                reportData={{
+                  filename: props.pdfFilename,
+                  projectName: props.project.name,
+                  projectDomain: props.project.domain,
+                  periodLabel: props.reportPeriodLabel,
+                  rangeLabel: props.rangeLabel,
+                  brandingHeader: cfg.branding.headerText,
+                  summaryNarrative:
+                    cfg.sections.summary && props.summary
+                      ? props.summary.narrative
+                      : null,
+                  metrics:
+                    cfg.sections.kpis && props.summary
+                      ? props.summary.bullets.map((b) => ({
+                          label: b.label,
+                          value: formatBulletValue(b),
+                          change:
+                            b.changePct == null
+                              ? "—"
+                              : `${b.changePct >= 0 ? "+" : ""}${b.changePct.toFixed(1)}%`,
+                          direction: b.direction,
+                        }))
+                      : [],
+                  topQueries: cfg.sections.topQueries
+                    ? props.queries
+                    : undefined,
+                  topPages: cfg.sections.topPages ? props.pages : undefined,
+                  channels: cfg.sections.ga4Channels
+                    ? props.channels
+                    : undefined,
+                  keywords: cfg.sections.keywords
+                    ? props.keywords
+                    : undefined,
+                  backlinks: cfg.sections.backlinks
+                    ? props.backlinks.map((row) => ({
+                        row,
+                        categoryLabel: categoryMeta(row.category).label,
+                      }))
+                    : undefined,
+                  dailySeries:
+                    cfg.sections.chartClicksImpressions ||
+                    cfg.sections.chartPositionTrend
+                      ? props.overview.series
+                      : undefined,
+                  analysisNotes: cfg.sections.analysis
+                    ? props.analysisNotes ?? null
+                    : null,
+                  otherTasks: cfg.sections.otherTasks
+                    ? props.otherTasks ?? null
+                    : null,
+                }}
               />
               {props.mode !== "snapshot" ? (
                 <>
