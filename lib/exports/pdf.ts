@@ -25,6 +25,37 @@ export async function exportElementToPdf(
     windowWidth: element.scrollWidth,
     ignoreElements: (el) =>
       el instanceof HTMLElement && el.classList.contains("print:hidden"),
+    // Neutralise screen-only clipping in the captured clone so nothing is cut:
+    //  - `truncate` legend labels / table URLs show in full,
+    //  - scroll containers (tables) expand instead of clipping,
+    //  - inner max-widths don't crop content,
+    //  - flex-wrapped stat chips can't be clipped at a container edge.
+    // Applied only to the off-screen clone html2canvas renders — the live UI is
+    // untouched.
+    onclone: (clonedDoc) => {
+      const style = clonedDoc.createElement("style");
+      style.textContent = `
+        .truncate {
+          overflow: visible !important;
+          text-overflow: clip !important;
+          white-space: normal !important;
+        }
+        .overflow-x-auto, .overflow-y-auto, .overflow-auto {
+          overflow: visible !important;
+        }
+        [class*="max-w-"] { max-width: none !important; }
+        /* html2canvas miscomputes flex-wrap row heights and clips wrapped rows
+           (e.g. the summary stat chips). Render wrapped rows as inline flow,
+           which it handles correctly. */
+        [class*="flex-wrap"] { display: block !important; }
+        [class*="flex-wrap"] > * {
+          display: inline-flex !important;
+          vertical-align: top;
+          margin: 0 6px 6px 0 !important;
+        }
+      `;
+      clonedDoc.head.appendChild(style);
+    },
   });
 
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
