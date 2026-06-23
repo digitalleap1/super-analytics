@@ -476,6 +476,8 @@ export function EditableProjectReport(props: Props) {
                   periodLabel: props.reportPeriodLabel,
                   rangeLabel: props.rangeLabel,
                   brandingHeader: cfg.branding.headerText,
+                  logoUrl: props.project.logoUrl ?? null,
+                  agencyName: cfg.branding.headerText ?? null,
                   summaryNarrative:
                     cfg.sections.summary && props.summary
                       ? props.summary.narrative
