@@ -37,7 +37,9 @@ export const DEFAULT_TEMPLATE_CONFIG: ReportTemplateConfig = {
     analysis: true,
     chartClicksImpressions: true,
     chartPositionTrend: true,
-    keywords: true,
+    // Off by default — agencies typically link a Google Sheet of rankings in the
+    // "Other tasks" field instead. Toggle on per template if you want it.
+    keywords: false,
     backlinks: true,
     topQueries: true,
     topPages: true,

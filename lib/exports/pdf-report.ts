@@ -212,6 +212,26 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
     y += 3;
   };
 
+  // Clickable pill button (e.g. a linked Google Sheet) with a small arrow.
+  const linkButton = (label: string, url: string) => {
+    ensure(11);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    const tw = doc.getTextWidth(label);
+    const bw = tw + 12;
+    const bh = 8;
+    setFill(PINK);
+    doc.roundedRect(margin, y, bw, bh, 1.5, 1.5, "F");
+    setText([255, 255, 255]);
+    doc.text(label, margin + 4, y + bh - 2.8);
+    setFill([255, 255, 255]);
+    const ax = margin + 4 + tw + 2.5;
+    const ay = y + bh / 2;
+    doc.triangle(ax, ay - 1.6, ax, ay + 1.6, ax + 2.4, ay, "F");
+    doc.link(margin, y, bw, bh, { url });
+    y += bh + 4;
+  };
+
   const arrow = (dir: "up" | "down" | "flat", x: number, yc: number, c: RGB) => {
     setFill(c);
     if (dir === "up") doc.triangle(x, yc + 1.6, x + 3, yc + 1.6, x + 1.5, yc - 1.4, "F");
@@ -540,10 +560,22 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
     );
   }
 
-  // ── Work completed / on-page tasks ──
+  // ── Work completed / on-page tasks (+ any pasted links as buttons) ──
   if (data.otherTasks && data.otherTasks.trim()) {
     sectionHeading("Work Completed & On-Page Tasks");
-    paragraph(data.otherTasks.trim());
+    const raw = data.otherTasks.trim();
+    const urls = raw.match(/https?:\/\/[^\s)]+/g) ?? [];
+    const prose = raw
+      .replace(/https?:\/\/[^\s)]+/g, "")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    if (prose) paragraph(prose);
+    for (const u of urls) {
+      const url = u.replace(/[.,);]+$/, "");
+      const isSheet = /docs\.google\.com\/spreadsheets|sheets\.google\.com/i.test(url);
+      linkButton(isSheet ? "View keyword rankings" : "Open link", url);
+    }
   }
 
   // ── Analysis ──
