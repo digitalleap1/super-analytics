@@ -561,17 +561,16 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
     );
   }
 
-  // ── Footer on every page ──
+  // ── Footer page numbers on every content page ──
   const pages = doc.getNumberOfPages();
-  for (let p = 1; p <= pages; p++) {
+  for (let p = 2; p <= pages; p++) {
     doc.setPage(p);
     setText(MUTED);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text(`Powered by ${agency}`, margin, pageH - 6);
-    if (p > 1) {
-      doc.text(`Page ${p - 1} of ${pages - 1}`, pageW - margin, pageH - 6, { align: "right" });
-    }
+    doc.text(`Page ${p - 1} of ${pages - 1}`, pageW - margin, pageH - 6, {
+      align: "right",
+    });
   }
 
   doc.save(data.filename.endsWith(".pdf") ? data.filename : `${data.filename}.pdf`);
