@@ -12,6 +12,7 @@ export async function GET(
   const result = await listGa4Properties({
     userId: user.id,
     projectId: project.id,
+    strict: true,
   });
   return NextResponse.json({
     properties: result.properties,

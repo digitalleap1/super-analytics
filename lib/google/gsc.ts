@@ -177,10 +177,14 @@ export async function getGscPages(
 export async function listGscSites(opts: {
   userId: string;
   projectId?: string | null;
+  // strict = only use THIS project's Search Console connection (no fallback to
+  // the viewing user's personal Google). Used by the project settings dropdown
+  // so it never shows another account's sites.
+  strict?: boolean;
 }): Promise<GscSiteListItem[]> {
   const token = await resolveGoogleAccessToken({
     projectId: opts.projectId ?? null,
-    userId: opts.userId,
+    userId: opts.strict ? null : opts.userId,
     service: "search_console",
   });
   const stubSeed = opts.projectId ?? opts.userId;

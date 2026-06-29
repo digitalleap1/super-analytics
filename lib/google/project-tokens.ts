@@ -85,7 +85,11 @@ export function buildProjectAuthorizeUrl(
     response_type: "code",
     scope: scopesFor(service),
     access_type: "offline",
-    prompt: "consent",
+    // "select_account" forces Google's account chooser every time, so a client's
+    // GSC and GA4 can be connected under *different* Google accounts instead of
+    // silently reusing whichever account is already signed in. "consent" keeps
+    // refresh tokens flowing.
+    prompt: "select_account consent",
     include_granted_scopes: "true",
     state: signProjectState(projectId, service),
   });

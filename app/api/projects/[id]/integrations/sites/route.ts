@@ -9,6 +9,10 @@ export async function GET(
 ) {
   const { user, project, response } = await getApiProject(params.id);
   if (!project || !user) return response;
-  const sites = await listGscSites({ userId: user.id, projectId: project.id });
+  const sites = await listGscSites({
+    userId: user.id,
+    projectId: project.id,
+    strict: true,
+  });
   return NextResponse.json({ sites });
 }

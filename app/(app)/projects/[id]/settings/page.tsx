@@ -139,6 +139,8 @@ export default async function ProjectSettingsPage({
               gscSiteUrl: project.gscSiteUrl,
               ga4PropertyId: project.ga4PropertyId,
             }}
+            gscEmail={gscConn?.email ?? null}
+            ga4Email={ga4Conn?.email ?? null}
           />
         ) : (
           <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">

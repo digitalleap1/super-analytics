@@ -25,9 +25,18 @@ type Props = {
     gscSiteUrl: string | null;
     ga4PropertyId: string | null;
   };
+  // Connected account emails per service (from project settings). When the two
+  // differ, GSC and GA4 are saved independently with two buttons.
+  gscEmail?: string | null;
+  ga4Email?: string | null;
 };
 
-export function DataSourcesForm({ projectId, initial }: Props) {
+export function DataSourcesForm({
+  projectId,
+  initial,
+  gscEmail = null,
+  ga4Email = null,
+}: Props) {
   const router = useRouter();
   const [sites, setSites] = useState<GscSite[] | null>(null);
   const [properties, setProperties] = useState<Ga4Property[] | null>(null);
@@ -84,28 +93,39 @@ export function DataSourcesForm({ projectId, initial }: Props) {
     };
   }, [projectId]);
 
-  const isDirty =
-    (gscSiteUrl === NONE ? null : gscSiteUrl) !== initial.gscSiteUrl ||
-    (ga4PropertyId === NONE ? null : ga4PropertyId) !== initial.ga4PropertyId;
+  const gscValue = gscSiteUrl === NONE ? null : gscSiteUrl;
+  const ga4Value = ga4PropertyId === NONE ? null : ga4PropertyId;
+  const gscDirty = gscValue !== initial.gscSiteUrl;
+  const ga4Dirty = ga4Value !== initial.ga4PropertyId;
+  const isDirty = gscDirty || ga4Dirty;
 
-  function save() {
+  // GSC and GA4 live under different Google accounts → save each separately.
+  const differentAccounts = !!gscEmail && !!ga4Email && gscEmail !== ga4Email;
+
+  function patch(body: Record<string, unknown>, successMsg: string) {
     startTransition(async () => {
       const res = await fetch(`/api/projects/${projectId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          gscSiteUrl: gscSiteUrl === NONE ? null : gscSiteUrl,
-          ga4PropertyId: ga4PropertyId === NONE ? null : ga4PropertyId,
-        }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         toast.error("Could not save data sources");
         return;
       }
-      toast.success("Data sources updated");
+      toast.success(successMsg);
       router.refresh();
     });
   }
+
+  const saveBoth = () =>
+    patch(
+      { gscSiteUrl: gscValue, ga4PropertyId: ga4Value },
+      "Data sources updated",
+    );
+  const saveGsc = () =>
+    patch({ gscSiteUrl: gscValue }, "Search Console site saved");
+  const saveGa4 = () => patch({ ga4PropertyId: ga4Value }, "GA4 property saved");
 
   const siteOptions = useMemo(
     () =>
@@ -133,7 +153,14 @@ export function DataSourcesForm({ projectId, initial }: Props) {
       ) : null}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Search Console site</Label>
+          <Label>
+            Search Console site
+            {gscEmail ? (
+              <span className="ml-1 font-normal text-muted-foreground">
+                · {gscEmail}
+              </span>
+            ) : null}
+          </Label>
           <SearchableSelect
             value={gscSiteUrl}
             onChange={setGscSiteUrl}
@@ -150,7 +177,14 @@ export function DataSourcesForm({ projectId, initial }: Props) {
           </p>
         </div>
         <div className="space-y-2">
-          <Label>GA4 property</Label>
+          <Label>
+            GA4 property
+            {ga4Email ? (
+              <span className="ml-1 font-normal text-muted-foreground">
+                · {ga4Email}
+              </span>
+            ) : null}
+          </Label>
           <SearchableSelect
             value={ga4PropertyId}
             onChange={setGa4PropertyId}
@@ -179,10 +213,23 @@ export function DataSourcesForm({ projectId, initial }: Props) {
           )}
         </div>
       </div>
-      <Button onClick={save} disabled={!isDirty || isPending}>
-        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-        Save data sources
-      </Button>
+      {differentAccounts ? (
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={saveGsc} disabled={!gscDirty || isPending}>
+            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Save GSC project
+          </Button>
+          <Button onClick={saveGa4} disabled={!ga4Dirty || isPending}>
+            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Save GA4 project
+          </Button>
+        </div>
+      ) : (
+        <Button onClick={saveBoth} disabled={!isDirty || isPending}>
+          {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          Save data sources
+        </Button>
+      )}
     </div>
   );
 }
