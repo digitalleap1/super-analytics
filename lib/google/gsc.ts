@@ -39,6 +39,7 @@ export async function getGscOverview(opts: FetchOpts): Promise<GscOverview> {
   const token = await resolveGoogleAccessToken({
     projectId: opts.projectId,
     userId: opts.userId,
+    service: "search_console",
   });
   if (!token) return stubGscOverview(stubSeed, opts.from, opts.to);
 
@@ -105,6 +106,7 @@ export async function getGscQueries(opts: FetchOpts): Promise<GscQueriesResult> 
   const token = await resolveGoogleAccessToken({
     projectId: opts.projectId,
     userId: opts.userId,
+    service: "search_console",
   });
   if (!token) return { rows: stubGscQueries(stubSeed), source: "stub" };
 
@@ -142,6 +144,7 @@ export async function getGscPages(
   const token = await resolveGoogleAccessToken({
     projectId: opts.projectId,
     userId: opts.userId,
+    service: "search_console",
   });
   if (!token) {
     return { rows: stubGscPages(stubSeed, opts.domain), source: "stub" };
@@ -178,6 +181,7 @@ export async function listGscSites(opts: {
   const token = await resolveGoogleAccessToken({
     projectId: opts.projectId ?? null,
     userId: opts.userId,
+    service: "search_console",
   });
   const stubSeed = opts.projectId ?? opts.userId;
   if (!token) return stubGscSites(stubSeed);
@@ -211,6 +215,7 @@ export async function getKeywordDaily(opts: {
   const token = await resolveGoogleAccessToken({
     projectId: opts.projectId,
     userId: opts.userId,
+    service: "search_console",
   });
   if (!token) {
     const { stubKeywordDaily } = await import("./stub");

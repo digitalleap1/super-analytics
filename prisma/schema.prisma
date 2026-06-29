@@ -120,16 +120,19 @@ model Project {
   backlinks      Backlink[]
   savedReports   SavedReport[]
   members        ProjectMember[]
-  googleAccount  ProjectAccount?
+  googleAccounts ProjectAccount[]
 }
 
 // Project-scoped Google OAuth tokens.
-// Each project can have its own Google connection — the agency uses the client's
-// own Google account for GSC/GA4 access without entangling it with anyone's
-// dashboard login. One-to-one with Project (re-running OAuth replaces).
+// Each project can connect Google per service: one account for both Search
+// Console + Analytics (service="all"), or separate accounts when a client's GSC
+// and GA4 live under different Google logins (service="search_console" /
+// "analytics"). The token is stored just for this project.
 model ProjectAccount {
   id                String   @id @default(cuid())
-  projectId         String   @unique
+  projectId         String
+  // "all" | "search_console" | "analytics"
+  service           String   @default("all")
   provider          String // currently always "google"
   providerAccountId String
   email             String?
@@ -141,6 +144,8 @@ model ProjectAccount {
   connectedById     String
   connectedAt       DateTime @default(now())
   project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, service])
 }
 
 // Per-project access control. Admins/owners of the workspace see every project

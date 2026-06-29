@@ -1,19 +1,30 @@
 import { NextResponse } from "next/server";
 
 import { getApiProject } from "@/lib/api-auth";
-import { buildProjectAuthorizeUrl } from "@/lib/google/project-tokens";
+import {
+  buildProjectAuthorizeUrl,
+  type GoogleService,
+} from "@/lib/google/project-tokens";
 
-// Kicks off an OAuth flow scoped to this project. Redirects the browser to
-// Google with state=signed(projectId). Google later POSTs back to
-// /api/google/project-callback which finishes the exchange.
+// Kicks off an OAuth flow scoped to this project (and optionally a single
+// service). ?service=gsc connects only Search Console, ?service=ga4 only
+// Analytics, otherwise both. Google POSTs back to /api/google/project-callback.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } },
 ) {
   const { project, response } = await getApiProject(params.id);
   if (!project) return response;
 
-  const url = buildProjectAuthorizeUrl(project.id);
+  const raw = new URL(request.url).searchParams.get("service");
+  const service: GoogleService =
+    raw === "gsc" || raw === "search_console"
+      ? "search_console"
+      : raw === "ga4" || raw === "analytics"
+        ? "analytics"
+        : "all";
+
+  const url = buildProjectAuthorizeUrl(project.id, service);
   if (!url) {
     return NextResponse.json(
       {

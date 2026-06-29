@@ -8,77 +8,106 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "@/components/icons/google";
 
+export type GoogleConn = {
+  email: string | null;
+  connectedAt: string;
+  // which stored account backs this service: a dedicated one or a shared "all".
+  via: "all" | "search_console" | "analytics";
+} | null;
+
 type Props = {
   projectId: string;
-  connection: {
-    email: string | null;
-    connectedAt: string;
-  } | null;
+  gsc: GoogleConn;
+  ga4: GoogleConn;
   canManage: boolean;
 };
 
-export function ProjectGoogleConnect({
+const viaToParam = {
+  all: "all",
+  search_console: "gsc",
+  analytics: "ga4",
+} as const;
+
+function ServiceRow({
   projectId,
-  connection,
+  label,
+  hint,
+  conn,
+  connectParam,
   canManage,
-}: Props) {
+}: {
+  projectId: string;
+  label: string;
+  hint: string;
+  conn: GoogleConn;
+  connectParam: "gsc" | "ga4";
+  canManage: boolean;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   function disconnect() {
+    if (!conn) return;
     if (
       !confirm(
-        "Disconnect this project's Google account? GSC + GA4 data will fall back to your personal Google connection (if any), otherwise to sample data.",
+        `Disconnect ${label}? It will fall back to sample data until reconnected.`,
       )
-    ) {
+    )
       return;
-    }
     startTransition(async () => {
       const res = await fetch(
-        `/api/projects/${projectId}/google/disconnect`,
+        `/api/projects/${projectId}/google/disconnect?service=${viaToParam[conn.via]}`,
         { method: "POST" },
       );
       if (!res.ok) {
         toast.error("Could not disconnect");
         return;
       }
-      toast.success("Project disconnected from Google");
+      toast.success(`${label} disconnected`);
       router.refresh();
     });
   }
 
-  if (connection) {
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4">
-        <div className="flex items-center gap-3">
-          <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-          <div>
-            <p className="text-sm font-medium">
-              Connected to Google for this project
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {connection.email ? (
-                <>
-                  Using <span className="font-mono">{connection.email}</span> ·
-                  connected {connection.connectedAt}
-                </>
-              ) : (
-                <>Connected {connection.connectedAt}</>
-              )}
-            </p>
-          </div>
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
+      <div className="flex items-center gap-3">
+        {conn ? (
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+        ) : (
+          <GoogleIcon className="h-5 w-5 shrink-0" />
+        )}
+        <div>
+          <p className="text-sm font-medium">{label}</p>
+          <p className="text-xs text-muted-foreground">
+            {conn ? (
+              <>
+                Connected
+                {conn.email ? (
+                  <>
+                    {" "}
+                    as <span className="font-mono">{conn.email}</span>
+                  </>
+                ) : null}
+                {conn.via === "all" ? " · shared account" : ""}
+              </>
+            ) : (
+              hint
+            )}
+          </p>
         </div>
-        {canManage ? (
-          <div className="flex gap-2">
-            <Button asChild variant="outline" size="sm">
-              <a
-                href={`/api/projects/${projectId}/google/connect`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Re-authorise
-              </a>
-            </Button>
+      </div>
+      {canManage ? (
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <a
+              href={`/api/projects/${projectId}/google/connect?service=${connectParam}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {conn ? "Re-authorise" : "Connect"}
+            </a>
+          </Button>
+          {conn ? (
             <Button
               variant="outline"
               size="sm"
@@ -92,47 +121,67 @@ export function ProjectGoogleConnect({
               )}
               Disconnect
             </Button>
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-lg border border-dashed bg-card/40 p-4">
-      <div className="flex items-start gap-3">
-        <GoogleIcon className="mt-0.5 h-5 w-5" />
-        <div className="flex-1">
-          <p className="text-sm font-medium">
-            Connect this project to its own Google account
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Each project can have its own Google connection — perfect for an
-            agency where every client&apos;s Search Console + Analytics live
-            under a different Google account. The token is stored just for
-            this project; nothing leaks between projects.
-          </p>
+          ) : null}
         </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function ProjectGoogleConnect({
+  projectId,
+  gsc,
+  ga4,
+  canManage,
+}: Props) {
+  return (
+    <div className="space-y-3 rounded-lg border bg-card p-4">
+      <div>
+        <p className="text-sm font-medium">Google data sources for this project</p>
+        <p className="text-xs text-muted-foreground">
+          Connect Search Console and Analytics separately — useful when a
+          client&apos;s GSC and GA4 live under different Google accounts. If
+          they&apos;re on the <strong>same</strong> account, use{" "}
+          <strong>Connect both</strong> below to authorise just once. The tokens
+          are stored only for this project.
+        </p>
       </div>
-      <div className="mt-4">
-        {canManage ? (
+
+      <ServiceRow
+        projectId={projectId}
+        label="Search Console"
+        hint="Not connected — sign in with the account that has GSC access."
+        conn={gsc}
+        connectParam="gsc"
+        canManage={canManage}
+      />
+      <ServiceRow
+        projectId={projectId}
+        label="Google Analytics (GA4)"
+        hint="Not connected — sign in with the account that has GA4 access."
+        conn={ga4}
+        connectParam="ga4"
+        canManage={canManage}
+      />
+
+      {canManage && (!gsc || !ga4) ? (
+        <div className="pt-1">
           <Button asChild>
             <a
-              href={`/api/projects/${projectId}/google/connect`}
+              href={`/api/projects/${projectId}/google/connect?service=all`}
               target="_blank"
               rel="noopener noreferrer"
             >
               <GoogleIcon className="mr-2 h-4 w-4" />
-              Connect Google for this project
+              Connect both with one account
             </a>
           </Button>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Ask a workspace admin to set up the Google connection for this
-            project.
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Same Google account owns both Search Console and Analytics? Connect
+            once here and it covers both.
           </p>
-        )}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

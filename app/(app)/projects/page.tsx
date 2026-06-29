@@ -38,7 +38,7 @@ export default async function ProjectsListPage() {
     orderBy: { updatedAt: "desc" },
     include: {
       template: { select: { id: true, name: true } },
-      googleAccount: { select: { id: true } },
+      googleAccounts: { select: { id: true } },
       _count: {
         select: {
           keywords: true,
@@ -56,7 +56,7 @@ export default async function ProjectsListPage() {
     logoUrl: p.logoUrl,
     gscSiteUrl: p.gscSiteUrl,
     ga4PropertyId: p.ga4PropertyId,
-    googleConnected: !!p.googleAccount,
+    googleConnected: p.googleAccounts.length > 0,
     templateName: p.template?.name ?? null,
     keywordCount: p._count.keywords,
     backlinkCount: p._count.backlinks,

@@ -70,6 +70,7 @@ export async function getGa4Overview(opts: FetchOpts): Promise<Ga4Overview> {
   const token = await resolveGoogleAccessToken({
     projectId: opts.projectId,
     userId: opts.userId,
+    service: "analytics",
   });
   if (!token) return stubGa4Overview(stubSeed, opts.from, opts.to);
 
@@ -112,6 +113,7 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
   const token = await resolveGoogleAccessToken({
     projectId: opts.projectId,
     userId: opts.userId,
+    service: "analytics",
   });
   if (!token) {
     return { rows: stubGa4Channels(stubSeed, opts.from, opts.to), source: "stub" };
@@ -168,6 +170,7 @@ export async function listGa4Properties(opts: {
   const token = await resolveGoogleAccessToken({
     projectId: opts.projectId ?? null,
     userId: opts.userId,
+    service: "analytics",
   });
   const stubSeed = opts.projectId ?? opts.userId;
   if (!token) {

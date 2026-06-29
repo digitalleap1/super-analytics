@@ -31,10 +31,11 @@ export async function GET(request: Request) {
   if (!state) {
     return NextResponse.json({ error: "Missing state" }, { status: 400 });
   }
-  const projectId = verifyProjectState(state);
-  if (!projectId) {
+  const verified = verifyProjectState(state);
+  if (!verified) {
     return NextResponse.json({ error: "Bad state signature" }, { status: 400 });
   }
+  const { projectId, service } = verified;
 
   if (error || !code) {
     return backToProject(projectId, url, "error", error ?? "missing_code");
@@ -78,9 +79,10 @@ export async function GET(request: Request) {
   if (!providerAccountId) providerAccountId = email ?? `unknown-${projectId}`;
 
   await prisma.projectAccount.upsert({
-    where: { projectId },
+    where: { projectId_service: { projectId, service } },
     create: {
       projectId,
+      service,
       provider: "google",
       providerAccountId,
       email,

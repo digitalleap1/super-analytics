@@ -29,16 +29,33 @@ export default async function ProjectSettingsPage({
 }) {
   const { user, workspace, project } = await requireProject(params.id);
 
-  const [userGoogleAccount, projectGoogleAccount] = await Promise.all([
+  const [userGoogleAccount, projectAccounts] = await Promise.all([
     prisma.account.findFirst({
       where: { userId: user.id, provider: "google" },
       select: { id: true },
     }),
-    prisma.projectAccount.findUnique({
+    prisma.projectAccount.findMany({
       where: { projectId: project.id },
-      select: { email: true, connectedAt: true },
+      select: { service: true, email: true, connectedAt: true },
     }),
   ]);
+
+  // A dedicated per-service account wins over a shared "all" account.
+  const resolveConn = (service: "search_console" | "analytics") => {
+    const account =
+      projectAccounts.find((a) => a.service === service) ??
+      projectAccounts.find((a) => a.service === "all");
+    return account
+      ? {
+          email: account.email,
+          connectedAt: account.connectedAt.toISOString().slice(0, 10),
+          via: account.service as "all" | "search_console" | "analytics",
+        }
+      : null;
+  };
+  const gscConn = resolveConn("search_console");
+  const ga4Conn = resolveConn("analytics");
+  const hasAnyProjectGoogle = projectAccounts.length > 0;
 
   await ensureWorkspaceDefaultTemplate(workspace.id);
   const [templates, allMemberships, projectMembers] = await Promise.all([
@@ -111,19 +128,11 @@ export default async function ProjectSettingsPage({
         </h2>
         <ProjectGoogleConnect
           projectId={project.id}
-          connection={
-            projectGoogleAccount
-              ? {
-                  email: projectGoogleAccount.email,
-                  connectedAt: projectGoogleAccount.connectedAt
-                    .toISOString()
-                    .slice(0, 10),
-                }
-              : null
-          }
+          gsc={gscConn}
+          ga4={ga4Conn}
           canManage={canManageTeam}
         />
-        {projectGoogleAccount || userGoogleAccount ? (
+        {hasAnyProjectGoogle || userGoogleAccount ? (
           <DataSourcesForm
             projectId={project.id}
             initial={{
