@@ -299,7 +299,7 @@ export function BacklinksTable({
             />
           </div>
           <div className="overflow-x-auto rounded-md border">
-            <table className="w-full text-sm">
+            <table className="w-full table-fixed text-sm">
               <thead className="bg-muted/40">
                 <tr>
                   {!readOnly ? (
@@ -317,7 +317,7 @@ export function BacklinksTable({
                     </th>
                   ) : null}
                   <th
-                    className="cursor-pointer select-none px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    className="w-40 cursor-pointer select-none px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                     onClick={() => toggleSort("category")}
                   >
                     Category
@@ -331,14 +331,14 @@ export function BacklinksTable({
                     <SortIcon for="url" />
                   </th>
                   <th
-                    className="cursor-pointer select-none px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    className="w-28 cursor-pointer select-none px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                     onClick={() => toggleSort("place")}
                   >
                     Place
                     <SortIcon for="place" />
                   </th>
                   <th
-                    className="cursor-pointer select-none px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    className="w-28 cursor-pointer select-none px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                     onClick={() => toggleSort("submittedAt")}
                   >
                     Date
@@ -377,14 +377,15 @@ export function BacklinksTable({
                           {meta.label}
                         </span>
                       </td>
-                      <td className="px-3 py-2 max-w-md">
+                      <td className="px-3 py-2">
                         <a
                           href={r.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 truncate text-primary hover:underline"
+                          title={r.url}
+                          className="flex items-center gap-1 text-primary hover:underline"
                         >
-                          <span className="truncate">
+                          <span className="min-w-0 truncate">
                             {r.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
                           </span>
                           <ExternalLink className="h-3 w-3 shrink-0" />

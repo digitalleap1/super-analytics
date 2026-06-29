@@ -495,14 +495,16 @@ export function EditableProjectReport(props: Props) {
                         }))
                       : [],
                   topQueries: cfg.sections.topQueries
-                    ? props.queries
+                    ? props.queries.slice(0, cfg.layout.tableLimit)
                     : undefined,
-                  topPages: cfg.sections.topPages ? props.pages : undefined,
+                  topPages: cfg.sections.topPages
+                    ? props.pages.slice(0, cfg.layout.tableLimit)
+                    : undefined,
                   channels: cfg.sections.ga4Channels
-                    ? props.channels
+                    ? props.channels.slice(0, cfg.layout.tableLimit)
                     : undefined,
                   keywords: cfg.sections.keywords
-                    ? props.keywords
+                    ? props.keywords.slice(0, cfg.layout.tableLimit)
                     : undefined,
                   backlinks: cfg.sections.backlinks
                     ? props.backlinks.map((row) => ({
