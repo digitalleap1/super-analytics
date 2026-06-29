@@ -71,7 +71,11 @@ export function ProjectGoogleConnect({
         {canManage ? (
           <div className="flex gap-2">
             <Button asChild variant="outline" size="sm">
-              <a href={`/api/projects/${projectId}/google/connect`}>
+              <a
+                href={`/api/projects/${projectId}/google/connect`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Re-authorise
               </a>
             </Button>
@@ -113,7 +117,11 @@ export function ProjectGoogleConnect({
       <div className="mt-4">
         {canManage ? (
           <Button asChild>
-            <a href={`/api/projects/${projectId}/google/connect`}>
+            <a
+              href={`/api/projects/${projectId}/google/connect`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <GoogleIcon className="mr-2 h-4 w-4" />
               Connect Google for this project
             </a>
