@@ -15,7 +15,9 @@ export type SectionKey =
 
 export type Density = "compact" | "comfortable" | "spacious";
 export type KpiColumns = 3 | 4 | 5 | 6;
-export type TableLimit = 5 | 10 | 15 | 20 | 25 | 50 | 100;
+// Any positive integer — presets are offered in the UI but custom counts are
+// allowed too.
+export type TableLimit = number;
 
 // Tables/lists whose row count can be capped independently of the global limit.
 export type LimitedSection =

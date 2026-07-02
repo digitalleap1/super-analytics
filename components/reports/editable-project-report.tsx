@@ -35,6 +35,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -54,9 +55,9 @@ import {
 import {
   type Density,
   type KpiColumns,
+  type LimitedSection,
   type ReportTemplateConfig,
   type SectionKey,
-  type TableLimit,
   densityClass,
   kpiGridClass,
   limitFor,
@@ -320,28 +321,43 @@ export function EditableProjectReport(props: Props) {
     </>
   );
 
-  const tableControls = (
-    <div className="space-y-2">
-      <Label>Rows per table</Label>
-      <Select
-        value={String(cfg.layout.tableLimit)}
-        onValueChange={(v) =>
-          setLayout("tableLimit", Number(v) as TableLimit)
-        }
-      >
-        <SelectTrigger>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="5">Top 5</SelectItem>
-          <SelectItem value="10">Top 10</SelectItem>
-          <SelectItem value="15">Top 15</SelectItem>
-          <SelectItem value="20">Top 20</SelectItem>
-          <SelectItem value="25">Top 25</SelectItem>
-          <SelectItem value="50">Top 50</SelectItem>
-          <SelectItem value="100">Top 100</SelectItem>
-        </SelectContent>
-      </Select>
+  function setSectionLimit(section: LimitedSection, value: number | null) {
+    setConfig((c) => {
+      const sl: Partial<Record<LimitedSection, number>> = {
+        ...(c.layout.sectionLimits ?? {}),
+      };
+      if (value == null || Number.isNaN(value)) delete sl[section];
+      else sl[section] = Math.max(1, Math.round(value));
+      return { ...c, layout: { ...c.layout, sectionLimits: sl } };
+    });
+  }
+
+  // A small number input for one section's row cap. Blank = use the global
+  // default (shown as the placeholder). Any positive integer is allowed.
+  const limitControl = (section: LimitedSection, label: string) => (
+    <div className="space-y-1">
+      <Label className="text-xs font-normal text-muted-foreground">
+        {label}
+      </Label>
+      <Input
+        type="number"
+        min={1}
+        className="h-8 w-20"
+        value={cfg.layout.sectionLimits?.[section] ?? ""}
+        placeholder={`${cfg.layout.tableLimit}`}
+        onChange={(e) => {
+          const v = e.target.value.trim();
+          setSectionLimit(section, v === "" ? null : Number(v));
+        }}
+      />
+    </div>
+  );
+
+  const tableLimitControls = (
+    <div className="flex flex-wrap items-end gap-3">
+      {limitControl("topQueries", "Queries")}
+      {limitControl("topPages", "Pages")}
+      {limitControl("ga4Channels", "Channels")}
     </div>
   );
 
@@ -887,7 +903,7 @@ export function EditableProjectReport(props: Props) {
               title=""
               editing={editing}
               onHide={() => setSection("keywords", false)}
-              controls={tableControls}
+              controls={limitControl("keywords", "Rows")}
             />
             <KeywordsSummary
               projectId={props.project.id}
@@ -911,7 +927,7 @@ export function EditableProjectReport(props: Props) {
               editing={editing}
               controls={
                 <>
-                  {tableControls}
+                  {tableLimitControls}
                   {tablesSubsections}
                 </>
               }
@@ -962,6 +978,7 @@ export function EditableProjectReport(props: Props) {
                 title=""
                 editing={editing}
                 onHide={() => setSection("backlinks", false)}
+                controls={limitControl("backlinks", "Rows")}
               />
             ) : null}
             <BacklinksSection

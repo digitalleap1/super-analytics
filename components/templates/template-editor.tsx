@@ -243,69 +243,52 @@ export function TemplateEditor({ mode, templateId, initial }: Props) {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Rows per table</Label>
-            <Select
-              value={String(config.layout.tableLimit)}
-              onValueChange={(v) =>
-                setLayout("tableLimit", Number(v) as TableLimit)
+            <Label>Rows per table (default)</Label>
+            <Input
+              type="number"
+              min={1}
+              className="w-28"
+              value={config.layout.tableLimit}
+              onChange={(e) =>
+                setLayout(
+                  "tableLimit",
+                  Math.max(1, Math.round(Number(e.target.value) || 1)),
+                )
               }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">Top 5</SelectItem>
-                <SelectItem value="10">Top 10</SelectItem>
-                <SelectItem value="15">Top 15</SelectItem>
-                <SelectItem value="20">Top 20</SelectItem>
-                <SelectItem value="25">Top 25</SelectItem>
-                <SelectItem value="50">Top 50</SelectItem>
-                <SelectItem value="100">Top 100</SelectItem>
-              </SelectContent>
-            </Select>
+            />
+            <p className="text-xs text-muted-foreground">
+              Default cap for every table — override per section below.
+            </p>
           </div>
         </div>
 
         <div className="space-y-2">
           <Label>Per-section row limits</Label>
           <p className="text-xs text-muted-foreground">
-            Cap each section independently. &quot;Default&quot; uses the global
-            rows-per-table above.
+            Set a custom count for any section. Leave blank to use the default
+            above.
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {(Object.keys(LIMITED_SECTION_LABELS) as LimitedSection[]).map(
               (section) => (
-                <div key={section} className="space-y-1">
+                <div
+                  key={section}
+                  className="flex items-center justify-between gap-3"
+                >
                   <Label className="text-xs font-normal text-muted-foreground">
                     {LIMITED_SECTION_LABELS[section]}
                   </Label>
-                  <Select
-                    value={String(
-                      config.layout.sectionLimits?.[section] ?? "default",
-                    )}
-                    onValueChange={(v) =>
-                      setSectionLimit(
-                        section,
-                        v === "default" ? null : (Number(v) as TableLimit),
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="default">
-                        Default (Top {config.layout.tableLimit})
-                      </SelectItem>
-                      <SelectItem value="5">Top 5</SelectItem>
-                      <SelectItem value="10">Top 10</SelectItem>
-                      <SelectItem value="15">Top 15</SelectItem>
-                      <SelectItem value="20">Top 20</SelectItem>
-                      <SelectItem value="25">Top 25</SelectItem>
-                      <SelectItem value="50">Top 50</SelectItem>
-                      <SelectItem value="100">Top 100</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    type="number"
+                    min={1}
+                    className="h-8 w-24"
+                    value={config.layout.sectionLimits?.[section] ?? ""}
+                    placeholder={`${config.layout.tableLimit}`}
+                    onChange={(e) => {
+                      const v = e.target.value.trim();
+                      setSectionLimit(section, v === "" ? null : Number(v));
+                    }}
+                  />
                 </div>
               ),
             )}
