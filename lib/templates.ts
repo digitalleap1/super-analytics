@@ -17,12 +17,22 @@ export type Density = "compact" | "comfortable" | "spacious";
 export type KpiColumns = 3 | 4 | 5 | 6;
 export type TableLimit = 5 | 10 | 15 | 20 | 25 | 50 | 100;
 
+// Tables/lists whose row count can be capped independently of the global limit.
+export type LimitedSection =
+  | "topQueries"
+  | "topPages"
+  | "ga4Channels"
+  | "keywords"
+  | "backlinks";
+
 export type ReportTemplateConfig = {
   sections: Record<SectionKey, boolean>;
   layout: {
     kpiColumns: KpiColumns;
     density: Density;
     tableLimit: TableLimit;
+    // Optional per-section row caps; each falls back to tableLimit when unset.
+    sectionLimits?: Partial<Record<LimitedSection, TableLimit>>;
   };
   branding: {
     headerText: string | null;
@@ -70,6 +80,23 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   ga4Channels: "GA4 channels table",
   otherTasks: "Other tasks (free-text)",
 };
+
+export const LIMITED_SECTION_LABELS: Record<LimitedSection, string> = {
+  topQueries: "Top queries",
+  topPages: "Top pages",
+  ga4Channels: "GA4 channels",
+  keywords: "Keywords",
+  backlinks: "Backlinks",
+};
+
+// Row cap for a section: its explicit per-section override, else the global
+// tableLimit default.
+export function limitFor(
+  cfg: ReportTemplateConfig,
+  section: LimitedSection,
+): number {
+  return cfg.layout.sectionLimits?.[section] ?? cfg.layout.tableLimit;
+}
 
 // Defensive parse: accepts partial/legacy configs, fills missing fields with
 // the default. Returns the same shape every time.

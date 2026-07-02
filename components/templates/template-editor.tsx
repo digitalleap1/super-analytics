@@ -21,8 +21,10 @@ import {
 import {
   DEFAULT_TEMPLATE_CONFIG,
   SECTION_LABELS,
+  LIMITED_SECTION_LABELS,
   type Density,
   type KpiColumns,
+  type LimitedSection,
   type ReportTemplateConfig,
   type SectionKey,
   type TableLimit,
@@ -63,6 +65,17 @@ export function TemplateEditor({ mode, templateId, initial }: Props) {
       ...c,
       layout: { ...c.layout, [key]: value },
     }));
+  }
+
+  function setSectionLimit(section: LimitedSection, value: TableLimit | null) {
+    setConfig((c) => {
+      const sl: Partial<Record<LimitedSection, TableLimit>> = {
+        ...(c.layout.sectionLimits ?? {}),
+      };
+      if (value == null) delete sl[section];
+      else sl[section] = value;
+      return { ...c, layout: { ...c.layout, sectionLimits: sl } };
+    });
   }
 
   function setBranding<K extends keyof ReportTemplateConfig["branding"]>(
@@ -250,6 +263,52 @@ export function TemplateEditor({ mode, templateId, initial }: Props) {
                 <SelectItem value="100">Top 100</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Per-section row limits</Label>
+          <p className="text-xs text-muted-foreground">
+            Cap each section independently. &quot;Default&quot; uses the global
+            rows-per-table above.
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {(Object.keys(LIMITED_SECTION_LABELS) as LimitedSection[]).map(
+              (section) => (
+                <div key={section} className="space-y-1">
+                  <Label className="text-xs font-normal text-muted-foreground">
+                    {LIMITED_SECTION_LABELS[section]}
+                  </Label>
+                  <Select
+                    value={String(
+                      config.layout.sectionLimits?.[section] ?? "default",
+                    )}
+                    onValueChange={(v) =>
+                      setSectionLimit(
+                        section,
+                        v === "default" ? null : (Number(v) as TableLimit),
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">
+                        Default (Top {config.layout.tableLimit})
+                      </SelectItem>
+                      <SelectItem value="5">Top 5</SelectItem>
+                      <SelectItem value="10">Top 10</SelectItem>
+                      <SelectItem value="15">Top 15</SelectItem>
+                      <SelectItem value="20">Top 20</SelectItem>
+                      <SelectItem value="25">Top 25</SelectItem>
+                      <SelectItem value="50">Top 50</SelectItem>
+                      <SelectItem value="100">Top 100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ),
+            )}
           </div>
         </div>
       </Card>

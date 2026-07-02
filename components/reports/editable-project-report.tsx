@@ -59,6 +59,7 @@ import {
   type TableLimit,
   densityClass,
   kpiGridClass,
+  limitFor,
 } from "@/lib/templates";
 import { cn, formatNumber, formatPosition } from "@/lib/utils";
 import type { KeywordRow } from "@/lib/keywords";
@@ -498,22 +499,27 @@ export function EditableProjectReport(props: Props) {
                         }))
                       : [],
                   topQueries: cfg.sections.topQueries
-                    ? props.queries.slice(0, cfg.layout.tableLimit)
+                    ? props.queries.slice(0, limitFor(cfg, "topQueries"))
                     : undefined,
                   topPages: cfg.sections.topPages
-                    ? props.pages.slice(0, cfg.layout.tableLimit)
+                    ? props.pages.slice(0, limitFor(cfg, "topPages"))
                     : undefined,
                   channels: cfg.sections.ga4Channels
-                    ? props.channels.slice(0, cfg.layout.tableLimit)
+                    ? props.channels.slice(0, limitFor(cfg, "ga4Channels"))
                     : undefined,
                   keywords: cfg.sections.keywords
-                    ? props.keywords.slice(0, cfg.layout.tableLimit)
+                    ? props.keywords.slice(0, limitFor(cfg, "keywords"))
                     : undefined,
                   backlinks: cfg.sections.backlinks
-                    ? props.backlinks.map((row) => ({
-                        row,
-                        categoryLabel: categoryMeta(row.category).label,
-                      }))
+                    ? [...props.backlinks]
+                        .sort((a, b) =>
+                          b.submittedAt.localeCompare(a.submittedAt),
+                        )
+                        .slice(0, limitFor(cfg, "backlinks"))
+                        .map((row) => ({
+                          row,
+                          categoryLabel: categoryMeta(row.category).label,
+                        }))
                     : undefined,
                   dailySeries:
                     cfg.sections.chartClicksImpressions ||
@@ -887,7 +893,7 @@ export function EditableProjectReport(props: Props) {
               projectId={props.project.id}
               projectName={props.project.name}
               rows={props.keywords}
-              limit={cfg.layout.tableLimit}
+              limit={limitFor(cfg, "keywords")}
             />
           </section>
         ) : editing ? (
@@ -913,16 +919,28 @@ export function EditableProjectReport(props: Props) {
             <ReportTables
               projectName={props.project.name}
               rangeLabel={`${props.reportPeriodLabel} · ${props.rangeLabel}`}
-              queries={cfg.sections.topQueries ? props.queries : []}
+              queries={
+                cfg.sections.topQueries
+                  ? props.queries.slice(0, limitFor(cfg, "topQueries"))
+                  : []
+              }
               prevQueries={props.prevQueries}
-              pages={cfg.sections.topPages ? props.pages : []}
+              pages={
+                cfg.sections.topPages
+                  ? props.pages.slice(0, limitFor(cfg, "topPages"))
+                  : []
+              }
               prevPages={props.prevPages}
-              channels={cfg.sections.ga4Channels ? props.channels : []}
+              channels={
+                cfg.sections.ga4Channels
+                  ? props.channels.slice(0, limitFor(cfg, "ga4Channels"))
+                  : []
+              }
               prevChannels={props.prevChannels}
               showQueries={cfg.sections.topQueries}
               showPages={cfg.sections.topPages}
               showChannels={cfg.sections.ga4Channels}
-              rowLimit={cfg.layout.tableLimit}
+              rowLimit={100}
             />
           </section>
         ) : editing ? (
@@ -953,6 +971,7 @@ export function EditableProjectReport(props: Props) {
               rows={props.backlinks}
               monthly={props.backlinkMonthly}
               readOnly={props.mode === "snapshot"}
+              limit={limitFor(cfg, "backlinks")}
             />
           </section>
         ) : editing ? (

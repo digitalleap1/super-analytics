@@ -15,6 +15,9 @@ type Props = {
   rows: BacklinkRow[];
   monthly: BacklinkMonthBucket[];
   readOnly?: boolean;
+  // Cap how many backlink rows the table shows (most recent first). The pie +
+  // monthly trend still reflect the full set. Unset = show all.
+  limit?: number;
 };
 
 export function BacklinksSection({
@@ -24,7 +27,14 @@ export function BacklinksSection({
   rows,
   monthly,
   readOnly = false,
+  limit,
 }: Props) {
+  const tableRows =
+    limit != null
+      ? [...rows]
+          .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+          .slice(0, limit)
+      : rows;
   return (
     <Card className="space-y-5 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -61,7 +71,7 @@ export function BacklinksSection({
       <BacklinksTable
         projectId={projectId}
         projectName={projectName}
-        rows={rows}
+        rows={tableRows}
         readOnly={readOnly}
       />
     </Card>
