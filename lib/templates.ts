@@ -15,7 +15,7 @@ export type SectionKey =
 
 export type Density = "compact" | "comfortable" | "spacious";
 export type KpiColumns = 3 | 4 | 5 | 6;
-export type TableLimit = 10 | 25 | 50 | 100;
+export type TableLimit = 5 | 10 | 15 | 20 | 25 | 50 | 100;
 
 export type ReportTemplateConfig = {
   sections: Record<SectionKey, boolean>;

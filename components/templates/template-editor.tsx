@@ -241,7 +241,10 @@ export function TemplateEditor({ mode, templateId, initial }: Props) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="5">Top 5</SelectItem>
                 <SelectItem value="10">Top 10</SelectItem>
+                <SelectItem value="15">Top 15</SelectItem>
+                <SelectItem value="20">Top 20</SelectItem>
                 <SelectItem value="25">Top 25</SelectItem>
                 <SelectItem value="50">Top 50</SelectItem>
                 <SelectItem value="100">Top 100</SelectItem>
