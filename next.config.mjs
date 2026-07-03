@@ -1,5 +1,32 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async headers() {
+    // Security hardening: only the agency tools hub may embed this app, and it
+    // should never be indexed by search engines (keeps the raw deployment URL
+    // out of Google so it isn't casually discoverable).
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            // Restricts who can iframe the app. Note: intentionally NOT setting
+            // X-Frame-Options (which would block the tools iframe) — CSP
+            // frame-ancestors is the modern, more precise control.
+            key: "Content-Security-Policy",
+            value:
+              "frame-ancestors 'self' https://tools.digitalleapmarketing.com;",
+          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          {
+            key: "Permissions-Policy",
+            value: "browsing-topics=(), interest-cohort=()",
+          },
+        ],
+      },
+    ];
+  },
   webpack: (config, { isServer, webpack }) => {
     if (!isServer) {
       // pptxgenjs imports `node:fs` / `node:path` from its Node entry point.

@@ -10,14 +10,19 @@ import {
   verifyProjectState,
 } from "@/lib/google/project-tokens";
 
+// The OAuth flow runs in a popup tab (opened from the tools-hub iframe), so we
+// send the result to the public /google/connected confirmation page rather than
+// the gated project settings page — the embed gate would otherwise block a
+// top-level navigation here.
 function backToProject(
   projectId: string,
   url: URL,
   status: "connected" | "error",
   message?: string,
 ) {
-  const dest = new URL(`/projects/${projectId}/settings`, url);
-  dest.searchParams.set("google", status);
+  const dest = new URL(`/google/connected`, url);
+  dest.searchParams.set("status", status);
+  dest.searchParams.set("project", projectId);
   if (message) dest.searchParams.set("reason", message);
   return NextResponse.redirect(dest);
 }
