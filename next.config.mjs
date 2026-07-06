@@ -1,5 +1,44 @@
+// ─── Multi-Zone reverse proxy support ────────────────────────────────────────
+// When this app is served under a subpath of the tools hub
+// (tools.digitalleapmarketing.com/super-analytics) it must run WITH a basePath so
+// every page, /_next asset, API route and server action lives under that prefix
+// and never collides with the hub's own routes. This is env-gated: with
+// NEXT_PUBLIC_BASE_PATH unset the build is byte-for-byte the current production
+// build (served at root), so shipping this change breaks nothing until the env
+// var is set on a specific deployment.
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || undefined;
+
+// Hosts allowed to invoke Server Actions. Behind the proxy the browser's Origin
+// is the gateway host, not this app's Vercel host, so it must be allow-listed.
+const serverActionOrigins = [
+  "tools.digitalleapmarketing.com",
+  "tools-staging.vercel.app",
+  ...(process.env.SERVER_ACTIONS_ALLOWED_ORIGINS?.split(",")
+    .map((s) => s.trim())
+    .filter(Boolean) ?? []),
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  ...(basePath ? { basePath } : {}),
+  experimental: {
+    serverActions: { allowedOrigins: serverActionOrigins },
+  },
+  // Keep legacy root share links working after the app moves under a basePath:
+  // super-analytics-pied.vercel.app/r/<token> → /super-analytics/r/<token>.
+  // `basePath:false` opts this rule out of the automatic prefixing so it can
+  // match the un-prefixed legacy path. No-op when basePath is unset.
+  async redirects() {
+    if (!basePath) return [];
+    return [
+      {
+        source: "/r/:token",
+        destination: `${basePath}/r/:token`,
+        permanent: false,
+        basePath: false,
+      },
+    ];
+  },
   async headers() {
     // Security hardening: only the agency tools hub may embed this app, and it
     // should never be indexed by search engines (keeps the raw deployment URL

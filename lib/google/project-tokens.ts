@@ -32,7 +32,13 @@ export const GOOGLE_PROJECT_SCOPES = scopesFor("all");
 export function projectOAuthRedirectUri(): string {
   const base =
     process.env.NEXTAUTH_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
-  return `${base}/api/google/project-callback`;
+  // Under the tools-hub reverse proxy the callback route lives at
+  // /super-analytics/api/google/project-callback. Add the basePath unless
+  // NEXTAUTH_URL already carries it (avoids a doubled prefix). This exact URI
+  // must be registered in the Google Cloud OAuth client's Authorized redirect URIs.
+  const bp = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const prefix = bp && !base.endsWith(bp) ? bp : "";
+  return `${base}${prefix}/api/google/project-callback`;
 }
 
 // Sign (projectId, service, nonce) with NEXTAUTH_SECRET so callers can't tamper

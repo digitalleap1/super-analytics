@@ -17,6 +17,13 @@ import type { NextRequest } from "next/server";
 
 const TOOLS_ORIGIN = "https://tools.digitalleapmarketing.com";
 
+// When served behind the tools-hub reverse proxy (basePath mode) the app already
+// lives on the trusted tools domain at /super-analytics, so the iframe-only embed
+// gate is not just unnecessary — it's harmful: a direct deep link or a browser
+// refresh sends Sec-Fetch-Site: none and would be blocked. Skip the gate entirely
+// in proxied mode. NEXT_PUBLIC_ vars are inlined at build, so this is a constant.
+const PROXIED = !!process.env.NEXT_PUBLIC_BASE_PATH;
+
 // Paths that must stay reachable outside the iframe on purpose.
 const EXEMPT_PREFIXES = [
   "/r/", // public, client-facing shared reports
@@ -64,6 +71,12 @@ function isAllowed(req: NextRequest): boolean {
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Behind the hub proxy the whole app is a subpath of the trusted tools domain;
+  // let every request through so deep links, refresh and shares work normally.
+  if (PROXIED) {
+    return NextResponse.next();
+  }
 
   if (AUTH_PAGES.some((p) => pathname.startsWith(p))) {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl));
