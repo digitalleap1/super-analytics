@@ -56,11 +56,16 @@ const HEADER_BG: RGB = [27, 38, 82];
 const ROW_ALT: RGB = [245, 246, 250];
 const BORDER: RGB = [223, 226, 234];
 const CARD_BG: RGB = [250, 250, 252];
+const LINK: RGB = [37, 99, 235];
 
 const nf = new Intl.NumberFormat("en-US");
 const num = (n: number) => nf.format(Math.round(n ?? 0));
 const pctFrac = (frac: number) => `${((frac ?? 0) * 100).toFixed(1)}%`;
 const posStr = (n: number | null) => (n == null ? "—" : n.toFixed(1));
+// Ensures a link target is an absolute, clickable URL (backlink rows may store
+// the display form without a scheme).
+const absoluteUrl = (u: string) =>
+  /^https?:\/\//i.test(u) ? u : `https://${u.replace(/^\/+/, "")}`;
 
 type Align = "left" | "right";
 type Column = { header: string; width: number; align?: Align };
@@ -382,6 +387,10 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
     columns: Column[],
     rows: string[][],
     directions?: (("up" | "down" | "flat") | null)[][],
+    // Optional per-cell absolute URL; a cell with a URL renders as an underlined
+    // blue link and the whole cell area becomes clickable (so wrapped URLs link
+    // in full).
+    links?: (string | null)[][],
   ) => {
     const pad = 2;
     const lh = 4.4;
@@ -425,14 +434,24 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
       }
       let x = margin;
       columns.forEach((c, ci) => {
+        const url = links?.[ri]?.[ci] ?? null;
         const dir = directions?.[ri]?.[ci] ?? null;
-        setText(dir === "up" ? GREEN : dir === "down" ? RED : INK);
+        setText(url ? LINK : dir === "up" ? GREEN : dir === "down" ? RED : INK);
         const tx = c.align === "right" ? x + c.width - pad : x + pad;
         let ty = y + pad + 2.6;
         for (const line of cellLines[ci]) {
           doc.text(line, tx, ty, { align: c.align === "right" ? "right" : "left" });
+          if (url) {
+            const lw = doc.getTextWidth(line);
+            const ux = c.align === "right" ? tx - lw : tx;
+            setDraw(LINK);
+            doc.setLineWidth(0.2);
+            doc.line(ux, ty + 0.8, ux + lw, ty + 0.8);
+          }
           ty += lh;
         }
+        // Whole-cell clickable area so a wrapped URL is fully linked.
+        if (url) doc.link(x, y, c.width, rowH, { url });
         x += c.width;
       });
       y += rowH;
@@ -498,6 +517,8 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
     table(
       [col(0.4, "Page"), col(0.15, "Clicks", "right"), col(0.18, "Impressions", "right"), col(0.12, "CTR", "right"), col(0.15, "Position", "right")],
       data.topPages.map((r) => [r.page.replace(/^https?:\/\//, ""), num(r.clicks), num(r.impressions), pctFrac(r.ctr), posStr(r.position)]),
+      undefined,
+      data.topPages.map((r) => [absoluteUrl(r.page), null, null, null, null]),
     );
   }
 
@@ -557,6 +578,8 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
         row.place ?? "—",
         row.submittedAt,
       ]),
+      undefined,
+      data.backlinks.map(({ row }) => [null, absoluteUrl(row.url), null, null]),
     );
   }
 
