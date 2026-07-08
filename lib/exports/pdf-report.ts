@@ -67,6 +67,99 @@ const posStr = (n: number | null) => (n == null ? "—" : n.toFixed(1));
 const absoluteUrl = (u: string) =>
   /^https?:\/\//i.test(u) ? u : `https://${u.replace(/^\/+/, "")}`;
 
+// Walks a parsed HTML body into plain text, turning block elements and <br> into
+// line breaks and list items into bullets — so rich-text survives as readable
+// PDF prose instead of raw tags.
+function domToText(root: Node): string {
+  const BLOCK = new Set([
+    "P", "DIV", "LI", "UL", "OL", "H1", "H2", "H3", "H4", "H5", "H6",
+    "SECTION", "ARTICLE", "BLOCKQUOTE", "TR", "TABLE", "HEADER", "FOOTER",
+  ]);
+  let out = "";
+  const walk = (node: Node) => {
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === 3) {
+        out += child.textContent ?? "";
+      } else if (child.nodeType === 1) {
+        const el = child as Element;
+        const tag = el.tagName;
+        if (tag === "BR") {
+          out += "\n";
+          return;
+        }
+        if (tag === "LI") {
+          out += "\n• ";
+          walk(el);
+          out += "\n";
+          return;
+        }
+        const block = BLOCK.has(tag);
+        if (block) out += "\n";
+        walk(el);
+        if (block) out += "\n";
+      }
+    });
+  };
+  walk(root);
+  return out;
+}
+
+// The free-text fields ("other tasks", "analysis") are rich-text HTML from the
+// editor. For the PDF we need clean prose (no tags/entities) plus the real links
+// to render as buttons. This runs during a browser export, so DOMParser is
+// available (it also repairs the malformed/nested anchors some editors emit); a
+// tag-strip is kept as a fallback.
+function parseRichText(input: string): {
+  prose: string;
+  links: { label: string; url: string }[];
+} {
+  const looksHtml = /<[a-z!/][\s\S]*>/i.test(input);
+  const links: { label: string; url: string }[] = [];
+  const seen = new Set<string>();
+  const pushLink = (rawUrl: string, label = "") => {
+    const u = rawUrl.trim().replace(/[.,);]+$/, "");
+    if (!/^https?:\/\//i.test(u) || seen.has(u)) return;
+    seen.add(u);
+    links.push({ url: u, label: label.trim() });
+  };
+
+  let prose = input;
+  if (looksHtml && typeof DOMParser !== "undefined") {
+    const parsed = new DOMParser().parseFromString(input, "text/html");
+    parsed
+      .querySelectorAll("a[href]")
+      .forEach((a) => pushLink(a.getAttribute("href") ?? "", a.textContent ?? ""));
+    prose = domToText(parsed.body);
+  } else if (looksHtml) {
+    prose = input
+      .replace(/<\s*br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|li|h[1-6]|ul|ol|tr)\s*>/gi, "\n")
+      .replace(/<li[^>]*>/gi, "\n• ")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&quot;/gi, '"')
+      .replace(/&#0?39;|&apos;/gi, "'");
+    Array.from(input.matchAll(/href\s*=\s*["']([^"']+)["']/gi)).forEach((m) =>
+      pushLink(m[1]),
+    );
+  }
+
+  // Any bare URLs left in the text also become buttons and are stripped from the
+  // prose so long links don't clutter it.
+  Array.from(prose.matchAll(/https?:\/\/[^\s)]+/g)).forEach((m) => pushLink(m[0]));
+  prose = prose
+    .replace(/https?:\/\/[^\s)]+/g, "")
+    .replace(/[^\S\n]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return { prose, links };
+}
+
 type Align = "left" | "right";
 type Column = { header: string; width: number; align?: Align };
 
@@ -586,25 +679,27 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
   // ── Work completed / on-page tasks (+ any pasted links as buttons) ──
   if (data.otherTasks && data.otherTasks.trim()) {
     sectionHeading("Work Completed & On-Page Tasks");
-    const raw = data.otherTasks.trim();
-    const urls = raw.match(/https?:\/\/[^\s)]+/g) ?? [];
-    const prose = raw
-      .replace(/https?:\/\/[^\s)]+/g, "")
-      .replace(/[ \t]+\n/g, "\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
+    const { prose, links } = parseRichText(data.otherTasks);
     if (prose) paragraph(prose);
-    for (const u of urls) {
-      const url = u.replace(/[.,);]+$/, "");
+    for (const { url, label } of links) {
       const isSheet = /docs\.google\.com\/spreadsheets|sheets\.google\.com/i.test(url);
-      linkButton(isSheet ? "View keyword rankings" : "Open link", url);
+      // Prefer the link's own text as the button label when it's clean and short.
+      const clean =
+        label && !/^https?:\/\//i.test(label) && label.length <= 42 ? label : "";
+      linkButton(clean || (isSheet ? "View keyword rankings" : "Open link"), url);
     }
   }
 
   // ── Analysis ──
   if (data.analysisNotes && data.analysisNotes.trim()) {
     sectionHeading("Analysis & Insights");
-    paragraph(data.analysisNotes.trim());
+    const { prose, links } = parseRichText(data.analysisNotes);
+    if (prose) paragraph(prose);
+    for (const { url, label } of links) {
+      const clean =
+        label && !/^https?:\/\//i.test(label) && label.length <= 42 ? label : "";
+      linkButton(clean || "Open link", url);
+    }
   }
 
   // ── Appendix: daily data ──
