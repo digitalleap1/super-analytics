@@ -15,7 +15,7 @@ import type {
   GscQueryRow,
 } from "@/lib/google/types";
 import type { KeywordRow } from "@/lib/keywords";
-import type { BacklinkRow } from "@/lib/backlinks";
+import { BACKLINK_CATEGORIES, type BacklinkRow } from "@/lib/backlinks";
 
 export type ReportMetric = {
   label: string;
@@ -66,6 +66,34 @@ const posStr = (n: number | null) => (n == null ? "—" : n.toFixed(1));
 // the display form without a scheme).
 const absoluteUrl = (u: string) =>
   /^https?:\/\//i.test(u) ? u : `https://${u.replace(/^\/+/, "")}`;
+
+// Category colors are stored as CSS "hsl(h s% l%)" strings; jsPDF needs RGB.
+function hslToRgb(hsl: string): RGB {
+  const m = hsl.match(/hsl\(\s*([\d.]+)[,\s]+([\d.]+)%[,\s]+([\d.]+)%/i);
+  if (!m) return [128, 128, 128];
+  const h = parseFloat(m[1]) / 360;
+  const s = parseFloat(m[2]) / 100;
+  const l = parseFloat(m[3]) / 100;
+  if (s === 0) {
+    const v = Math.round(l * 255);
+    return [v, v, v];
+  }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const hue2rgb = (t: number) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  return [
+    Math.round(hue2rgb(h + 1 / 3) * 255),
+    Math.round(hue2rgb(h) * 255),
+    Math.round(hue2rgb(h - 1 / 3) * 255),
+  ];
+}
 
 // Walks a parsed HTML body into plain text, turning block elements and <br> into
 // line breaks and list items into bullets — so rich-text survives as readable
@@ -475,6 +503,110 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
     }
   };
 
+  // Donut chart + legend for the backlinks category breakdown (mirrors the
+  // on-screen chart). jsPDF has no arc primitive, so each slice is drawn as a
+  // fan of filled triangles from the center; a white inner circle punches the
+  // hole, and white radial lines separate the slices.
+  const donutChart = (
+    slices: { label: string; value: number; color: RGB }[],
+    total: number,
+    caption: string,
+  ) => {
+    const size = 44;
+    ensure(size + 6);
+    const top = y;
+    const cx = margin + size / 2;
+    const cyc = top + size / 2;
+    const rOuter = size / 2;
+    const rInner = rOuter * 0.6;
+    const TAU = Math.PI * 2;
+
+    let a0 = -Math.PI / 2; // start at 12 o'clock
+    const bounds: number[] = [a0];
+    for (const s of slices) {
+      const frac = total > 0 ? s.value / total : 0;
+      const a1 = a0 + frac * TAU;
+      const steps = Math.max(2, Math.ceil(((a1 - a0) / Math.PI) * 45)); // ~2°
+      // One filled polygon per slice (center → arc → close) — avoids the hairline
+      // seams a triangle fan leaves between sub-triangles.
+      const segs: number[][] = [];
+      let px = cx + rOuter * Math.cos(a0);
+      let py = cyc + rOuter * Math.sin(a0);
+      segs.push([px - cx, py - cyc]);
+      for (let i = 1; i <= steps; i++) {
+        const t = a0 + ((a1 - a0) * i) / steps;
+        const nx = cx + rOuter * Math.cos(t);
+        const ny = cyc + rOuter * Math.sin(t);
+        segs.push([nx - px, ny - py]);
+        px = nx;
+        py = ny;
+      }
+      setFill(s.color);
+      doc.lines(segs, cx, cyc, [1, 1], "F", true);
+      a0 = a1;
+      bounds.push(a1);
+    }
+
+    if (slices.length > 1) {
+      setDraw([255, 255, 255]);
+      doc.setLineWidth(0.7);
+      for (const b of bounds) {
+        doc.line(
+          cx + rInner * Math.cos(b), cyc + rInner * Math.sin(b),
+          cx + rOuter * Math.cos(b), cyc + rOuter * Math.sin(b),
+        );
+      }
+    }
+
+    doc.setFillColor(255, 255, 255);
+    doc.circle(cx, cyc, rInner, "F");
+
+    setText(NAVY);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.text(String(total), cx, cyc + 0.5, { align: "center" });
+    setText(MUTED);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(5);
+    doc.text(caption.toUpperCase(), cx, cyc + 4.5, { align: "center" });
+
+    // Legend: two columns to the right of the donut.
+    const legendX = margin + size + 10;
+    const legendW = contentW - size - 10;
+    const colW = legendW / 2;
+    const perCol = Math.ceil(slices.length / 2);
+    const rowH = 6;
+    slices.forEach((s, i) => {
+      const c = Math.floor(i / perCol);
+      const r = i % perCol;
+      const lx = legendX + c * colW;
+      const ly = top + 5 + r * rowH;
+      setFill(s.color);
+      doc.roundedRect(lx, ly - 2.8, 2.8, 2.8, 0.6, 0.6, "F");
+      const pct = total > 0 ? Math.round((s.value / total) * 100) : 0;
+      setText(INK);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      let lbl = s.label;
+      const labelMaxW = colW - 20;
+      if (doc.getTextWidth(lbl) > labelMaxW) {
+        while (lbl.length > 3 && doc.getTextWidth(lbl + "…") > labelMaxW)
+          lbl = lbl.slice(0, -1);
+        lbl += "…";
+      }
+      doc.text(lbl, lx + 4.5, ly);
+      setText(NAVY);
+      doc.setFont("helvetica", "bold");
+      doc.text(String(s.value), lx + colW - 11, ly, { align: "right" });
+      setText(MUTED);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.text(`${pct}%`, lx + colW - 3, ly, { align: "right" });
+    });
+
+    y = top + Math.max(size, perCol * rowH + 6) + 4;
+  };
+
   // Wrapping table (cells wrap, header repeats, alternating shading).
   const table = (
     columns: Column[],
@@ -663,6 +795,27 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
   // ── Backlinks ──
   if (data.backlinks?.length) {
     sectionHeading("Backlinks");
+
+    // Category breakdown donut (mirrors the on-screen chart).
+    const counts = new Map<string, number>();
+    for (const { row } of data.backlinks) {
+      counts.set(row.category, (counts.get(row.category) ?? 0) + 1);
+    }
+    const slices = BACKLINK_CATEGORIES.map((c) => ({
+      label: c.label,
+      value: counts.get(c.value) ?? 0,
+      color: hslToRgb(c.color),
+    })).filter((s) => s.value > 0);
+    if (slices.length) {
+      setText(MUTED);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      ensure(6);
+      doc.text("CATEGORIES IN RANGE", margin, y + 2);
+      y += 5;
+      donutChart(slices, data.backlinks.length, "backlinks");
+    }
+
     table(
       [col(0.26, "Category"), col(0.4, "URL"), col(0.18, "Place"), col(0.16, "Date", "right")],
       data.backlinks.map(({ row, categoryLabel }) => [
