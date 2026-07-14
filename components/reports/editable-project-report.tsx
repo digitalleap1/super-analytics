@@ -113,6 +113,9 @@ type Props = {
   prevChannels?: Ga4ChannelRow[] | null;
   keywords: KeywordRow[];
   backlinks: BacklinkRow[];
+  // Every backlink regardless of the report range, so out-of-range entries stay
+  // manageable. Absent in snapshot / share views.
+  allBacklinks?: BacklinkRow[];
   backlinkMonthly: BacklinkMonthBucket[];
   fromDate: string; // YYYY-MM-DD; used by the Save report dialog
   toDate: string;
@@ -987,6 +990,7 @@ export function EditableProjectReport(props: Props) {
               projectName={props.project.name}
               rangeLabel={props.rangeLabel}
               rows={props.backlinks}
+              allRows={props.allBacklinks}
               monthly={props.backlinkMonthly}
               readOnly={props.mode === "snapshot"}
               limit={limitFor(cfg, "backlinks")}

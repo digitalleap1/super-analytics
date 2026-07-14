@@ -12,7 +12,11 @@ import { withCache } from "@/lib/cache";
 import { getGa4Channels, getGa4Overview } from "@/lib/google/ga4";
 import { getGscOverview, getGscPages, getGscQueries } from "@/lib/google/gsc";
 import { getKeywordSnapshot } from "@/lib/keywords";
-import { listBacklinkMonthlyStats, listBacklinksInRange } from "@/lib/backlinks";
+import {
+  listAllBacklinks,
+  listBacklinkMonthlyStats,
+  listBacklinksInRange,
+} from "@/lib/backlinks";
 import { buildReportSummary } from "@/lib/report-summary";
 import { loadTemplateForProject } from "@/lib/templates";
 
@@ -72,6 +76,7 @@ export default async function ProjectPage({
     keywords,
     backlinks,
     backlinkMonthly,
+    allBacklinks,
   ] = await Promise.all([
       withCache(project.id, "gsc_overview", cacheKey("current"), () =>
         getGscOverview(baseOpts),
@@ -116,6 +121,9 @@ export default async function ProjectPage({
         projectId: project.id,
         monthsBack: 6,
       }),
+      // Every backlink, so entries dated outside the report range (e.g. one
+      // logged today, while the range lags) can still be seen and edited.
+      listAllBacklinks(project.id),
     ]);
 
   const prevOverview = prev
@@ -235,6 +243,7 @@ export default async function ProjectPage({
       prevChannels={prevChannels?.rows ?? null}
       keywords={keywords}
       backlinks={backlinks}
+      allBacklinks={allBacklinks}
       backlinkMonthly={backlinkMonthly}
       fromDate={ymd(range.from)}
       toDate={ymd(range.to)}
