@@ -8,6 +8,7 @@ import {
   ChevronsUpDown,
   ExternalLink,
   Loader2,
+  Pencil,
   Search,
   Trash2,
   X,
@@ -24,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CsvExportButton } from "@/components/reports/csv-export-button";
+import { EditBacklinkDialog } from "@/components/backlinks/edit-backlink-dialog";
 import {
   BACKLINK_CATEGORIES,
   categoryMeta,
@@ -51,6 +53,8 @@ export function BacklinksTable({
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+  // Row currently open in the edit dialog (null = closed).
+  const [editRow, setEditRow] = useState<BacklinkRow | null>(null);
 
   // Filters
   const [category, setCategory] = useState<string>(ALL);
@@ -164,6 +168,28 @@ export function BacklinksTable({
       const body = (await res.json()) as { deleted: number };
       toast.success(`Deleted ${body.deleted} backlink${body.deleted === 1 ? "" : "s"}`);
       setSelected(new Set());
+      router.refresh();
+    });
+  }
+
+  // Delete a single row from its own row action.
+  function delOne(row: BacklinkRow) {
+    if (!confirm(`Delete this backlink?\n\n${row.url}`)) return;
+    startTransition(async () => {
+      const res = await fetch(
+        `/api/projects/${projectId}/backlinks?ids=${row.id}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) {
+        toast.error("Could not delete");
+        return;
+      }
+      toast.success("Backlink deleted");
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(row.id);
+        return next;
+      });
       router.refresh();
     });
   }
@@ -344,6 +370,11 @@ export function BacklinksTable({
                     Date
                     <SortIcon for="submittedAt" />
                   </th>
+                  {!readOnly ? (
+                    <th className="w-20 px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground print:hidden">
+                      Actions
+                    </th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -397,6 +428,32 @@ export function BacklinksTable({
                       <td className="px-3 py-2 tabular-nums text-muted-foreground">
                         {r.submittedAt}
                       </td>
+                      {!readOnly ? (
+                        <td className="px-3 py-2 print:hidden">
+                          <div className="flex items-center justify-end gap-0.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              onClick={() => setEditRow(r)}
+                              disabled={isPending}
+                              title="Edit backlink"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => delOne(r)}
+                              disabled={isPending}
+                              title="Delete backlink"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      ) : null}
                     </tr>
                   );
                 })}
@@ -405,6 +462,16 @@ export function BacklinksTable({
           </div>
         </>
       )}
+
+      {!readOnly ? (
+        <EditBacklinkDialog
+          projectId={projectId}
+          backlink={editRow}
+          onOpenChange={(open) => {
+            if (!open) setEditRow(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
