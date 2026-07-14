@@ -363,8 +363,27 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
     y += bh + 4;
   };
 
-  // One custom "other task": pink marker + bold name, notes prose, and a
-  // clickable link pill when a URL was given.
+  // A URL rendered as clickable, underlined blue text (wraps if long). Each
+  // wrapped line gets its own link annotation so the whole URL is clickable.
+  const linkLine = (url: string, display: string) => {
+    setText(LINK);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const lines = doc.splitTextToSize(display, contentW - 6) as string[];
+    for (const line of lines) {
+      ensure(5);
+      const lw = doc.getTextWidth(line);
+      doc.text(line, margin + 4, y + 3.4);
+      setDraw(LINK);
+      doc.setLineWidth(0.2);
+      doc.line(margin + 4, y + 4.2, margin + 4 + lw, y + 4.2);
+      doc.link(margin + 4, y, lw, 5, { url });
+      y += 5;
+    }
+  };
+
+  // One custom "other task": pink marker + bold name, notes prose, and the
+  // link shown as clickable text when a URL was given.
   const taskBlock = (t: CustomTask) => {
     ensure(14);
     if (t.title) {
@@ -392,11 +411,9 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
       }
     }
     if (t.url) {
-      y += 1.5;
-      const url = taskHref(t.url);
-      const isSheet =
-        /docs\.google\.com\/spreadsheets|sheets\.google\.com/i.test(url);
-      linkButton(isSheet ? "View sheet" : "Open link", url);
+      y += 1;
+      // Show the URL itself (as typed) rather than a generic button.
+      linkLine(taskHref(t.url), t.url);
     }
     y += 3;
   };
