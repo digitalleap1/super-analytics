@@ -20,6 +20,7 @@ import {
   parseOtherTasksValue,
   taskHref,
   type CustomTask,
+  type TaskGroup,
 } from "@/lib/other-tasks";
 
 export type ReportMetric = {
@@ -365,57 +366,78 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
 
   // A URL rendered as clickable, underlined blue text (wraps if long). Each
   // wrapped line gets its own link annotation so the whole URL is clickable.
-  const linkLine = (url: string, display: string) => {
+  const linkLine = (url: string, display: string, x: number) => {
     setText(LINK);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    const lines = doc.splitTextToSize(display, contentW - 6) as string[];
+    const lines = doc.splitTextToSize(display, pageW - margin - x) as string[];
     for (const line of lines) {
       ensure(5);
       const lw = doc.getTextWidth(line);
-      doc.text(line, margin + 4, y + 3.4);
+      doc.text(line, x, y + 3.4);
       setDraw(LINK);
       doc.setLineWidth(0.2);
-      doc.line(margin + 4, y + 4.2, margin + 4 + lw, y + 4.2);
-      doc.link(margin + 4, y, lw, 5, { url });
+      doc.line(x, y + 4.2, x + lw, y + 4.2);
+      doc.link(x, y, lw, 5, { url });
       y += 5;
     }
   };
 
-  // One custom "other task": pink marker + bold name, notes prose, and the
-  // link shown as clickable text when a URL was given.
-  const taskBlock = (t: CustomTask) => {
-    ensure(14);
+  // One task inside a category: bullet + bold name, notes, and the link shown
+  // as clickable text.
+  const taskBlock = (t: CustomTask, indent: number) => {
+    const x = margin + indent;
+    const w = pageW - margin - x;
+    ensure(12);
     if (t.title) {
-      setFill(PINK);
-      doc.rect(margin, y + 1.1, 1.4, 3.4, "F");
-      setText(NAVY);
+      setFill(NAVY);
+      doc.circle(x - 2.4, y + 2.6, 0.7, "F");
+      setText(INK);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(10.5);
-      const lines = doc.splitTextToSize(t.title, contentW - 6) as string[];
+      doc.setFontSize(10);
+      const lines = doc.splitTextToSize(t.title, w) as string[];
       for (const line of lines) {
-        ensure(5.6);
-        doc.text(line, margin + 4, y + 4);
-        y += 5.6;
+        ensure(5.4);
+        doc.text(line, x, y + 3.8);
+        y += 5.4;
       }
     }
     if (t.notes) {
-      setText(INK);
+      setText(MUTED);
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      const lines = doc.splitTextToSize(t.notes, contentW - 6) as string[];
+      doc.setFontSize(9.5);
+      const lines = doc.splitTextToSize(t.notes, w) as string[];
       for (const line of lines) {
-        ensure(5);
-        doc.text(line, margin + 4, y + 3.4);
-        y += 5;
+        ensure(4.8);
+        doc.text(line, x, y + 3.3);
+        y += 4.8;
       }
     }
     if (t.url) {
-      y += 1;
-      // Show the URL itself (as typed) rather than a generic button.
-      linkLine(taskHref(t.url), t.url);
+      linkLine(taskHref(t.url), t.url, x);
     }
-    y += 3;
+    y += 2.5;
+  };
+
+  // A category (e.g. "On-Page Tasks") with its tasks indented beneath it.
+  const taskGroupBlock = (g: TaskGroup) => {
+    if (g.title) {
+      ensure(12);
+      setFill(PINK);
+      doc.rect(margin, y + 1.1, 1.4, 3.8, "F");
+      setText(NAVY);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11.5);
+      const lines = doc.splitTextToSize(g.title, contentW - 6) as string[];
+      for (const line of lines) {
+        ensure(6);
+        doc.text(line, margin + 4, y + 4.2);
+        y += 6;
+      }
+      y += 1;
+    }
+    for (const t of g.tasks) taskBlock(t, g.title ? 8 : 3);
+    y += 2;
   };
 
   const arrow = (dir: "up" | "down" | "flat", x: number, yc: number, c: RGB) => {
@@ -893,10 +915,10 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
   // Preferred shape: structured custom tasks (name + link + notes). Projects
   // still holding the old free-text blob fall back to the rich-text renderer.
   if (data.otherTasks && data.otherTasks.trim()) {
-    const { tasks, legacyHtml } = parseOtherTasksValue(data.otherTasks);
-    if (tasks.length) {
+    const { groups, legacyHtml } = parseOtherTasksValue(data.otherTasks);
+    if (groups.length) {
       sectionHeading("Work Completed & Other Tasks");
-      for (const t of tasks) taskBlock(t);
+      for (const g of groups) taskGroupBlock(g);
     } else if (legacyHtml) {
       sectionHeading("Work Completed & Other Tasks");
       const { prose, links } = parseRichText(legacyHtml);
