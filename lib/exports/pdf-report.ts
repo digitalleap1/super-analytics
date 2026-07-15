@@ -16,6 +16,12 @@ import type {
 } from "@/lib/google/types";
 import type { KeywordRow } from "@/lib/keywords";
 import { BACKLINK_CATEGORIES, type BacklinkRow } from "@/lib/backlinks";
+import {
+  parseOtherTasksValue,
+  taskHref,
+  type CustomTask,
+  type TaskGroup,
+} from "@/lib/other-tasks";
 
 export type ReportMetric = {
   label: string;
@@ -356,6 +362,82 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
     doc.triangle(ax, ay - 1.6, ax, ay + 1.6, ax + 2.4, ay, "F");
     doc.link(margin, y, bw, bh, { url });
     y += bh + 4;
+  };
+
+  // A URL rendered as clickable, underlined blue text (wraps if long). Each
+  // wrapped line gets its own link annotation so the whole URL is clickable.
+  const linkLine = (url: string, display: string, x: number) => {
+    setText(LINK);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const lines = doc.splitTextToSize(display, pageW - margin - x) as string[];
+    for (const line of lines) {
+      ensure(5);
+      const lw = doc.getTextWidth(line);
+      doc.text(line, x, y + 3.4);
+      setDraw(LINK);
+      doc.setLineWidth(0.2);
+      doc.line(x, y + 4.2, x + lw, y + 4.2);
+      doc.link(x, y, lw, 5, { url });
+      y += 5;
+    }
+  };
+
+  // One task inside a category: bullet + bold name, notes, and the link shown
+  // as clickable text.
+  const taskBlock = (t: CustomTask, indent: number) => {
+    const x = margin + indent;
+    const w = pageW - margin - x;
+    ensure(12);
+    if (t.title) {
+      setFill(NAVY);
+      doc.circle(x - 2.4, y + 2.6, 0.7, "F");
+      setText(INK);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      const lines = doc.splitTextToSize(t.title, w) as string[];
+      for (const line of lines) {
+        ensure(5.4);
+        doc.text(line, x, y + 3.8);
+        y += 5.4;
+      }
+    }
+    if (t.notes) {
+      setText(MUTED);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      const lines = doc.splitTextToSize(t.notes, w) as string[];
+      for (const line of lines) {
+        ensure(4.8);
+        doc.text(line, x, y + 3.3);
+        y += 4.8;
+      }
+    }
+    if (t.url) {
+      linkLine(taskHref(t.url), t.url, x);
+    }
+    y += 2.5;
+  };
+
+  // A category (e.g. "On-Page Tasks") with its tasks indented beneath it.
+  const taskGroupBlock = (g: TaskGroup) => {
+    if (g.title) {
+      ensure(12);
+      setFill(PINK);
+      doc.rect(margin, y + 1.1, 1.4, 3.8, "F");
+      setText(NAVY);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11.5);
+      const lines = doc.splitTextToSize(g.title, contentW - 6) as string[];
+      for (const line of lines) {
+        ensure(6);
+        doc.text(line, margin + 4, y + 4.2);
+        y += 6;
+      }
+      y += 1;
+    }
+    for (const t of g.tasks) taskBlock(t, g.title ? 8 : 3);
+    y += 2;
   };
 
   const arrow = (dir: "up" | "down" | "flat", x: number, yc: number, c: RGB) => {
@@ -829,17 +911,28 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
     );
   }
 
-  // ── Work completed / on-page tasks (+ any pasted links as buttons) ──
+  // ── Work completed / other tasks ──
+  // Preferred shape: structured custom tasks (name + link + notes). Projects
+  // still holding the old free-text blob fall back to the rich-text renderer.
   if (data.otherTasks && data.otherTasks.trim()) {
-    sectionHeading("Work Completed & On-Page Tasks");
-    const { prose, links } = parseRichText(data.otherTasks);
-    if (prose) paragraph(prose);
-    for (const { url, label } of links) {
-      const isSheet = /docs\.google\.com\/spreadsheets|sheets\.google\.com/i.test(url);
-      // Prefer the link's own text as the button label when it's clean and short.
-      const clean =
-        label && !/^https?:\/\//i.test(label) && label.length <= 42 ? label : "";
-      linkButton(clean || (isSheet ? "View keyword rankings" : "Open link"), url);
+    const { groups, legacyHtml } = parseOtherTasksValue(data.otherTasks);
+    if (groups.length) {
+      sectionHeading("Work Completed & Other Tasks");
+      for (const g of groups) taskGroupBlock(g);
+    } else if (legacyHtml) {
+      sectionHeading("Work Completed & Other Tasks");
+      const { prose, links } = parseRichText(legacyHtml);
+      if (prose) paragraph(prose);
+      for (const { url, label } of links) {
+        const isSheet =
+          /docs\.google\.com\/spreadsheets|sheets\.google\.com/i.test(url);
+        // Prefer the link's own text as the button label when clean and short.
+        const clean =
+          label && !/^https?:\/\//i.test(label) && label.length <= 42
+            ? label
+            : "";
+        linkButton(clean || (isSheet ? "View sheet" : "Open link"), url);
+      }
     }
   }
 

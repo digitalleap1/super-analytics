@@ -53,6 +53,14 @@ export async function PATCH(
       ...(parsed.data.templateId !== undefined && {
         templateId: parsed.data.templateId,
       }),
+      // Free-text report fields. These were validated but never written, so
+      // "Save" reported success while the value was silently dropped.
+      ...(parsed.data.analysisNotes !== undefined && {
+        analysisNotes: parsed.data.analysisNotes,
+      }),
+      ...(parsed.data.otherTasks !== undefined && {
+        otherTasks: parsed.data.otherTasks,
+      }),
     },
   });
 

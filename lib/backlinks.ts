@@ -112,6 +112,26 @@ export async function listBacklinkMonthlyStats(opts: {
   return buckets;
 }
 
+function toRow(b: {
+  id: string;
+  category: string;
+  url: string;
+  place: string | null;
+  notes: string | null;
+  submittedAt: Date;
+  createdAt: Date;
+}): BacklinkRow {
+  return {
+    id: b.id,
+    category: b.category as BacklinkCategory,
+    url: b.url,
+    place: b.place,
+    notes: b.notes,
+    submittedAt: b.submittedAt.toISOString().slice(0, 10),
+    createdAt: b.createdAt.toISOString().slice(0, 10),
+  };
+}
+
 export async function listBacklinksInRange(opts: {
   projectId: string;
   from: Date;
@@ -124,15 +144,21 @@ export async function listBacklinksInRange(opts: {
     },
     orderBy: { submittedAt: "desc" },
   });
-  return rows.map((b) => ({
-    id: b.id,
-    category: b.category as BacklinkCategory,
-    url: b.url,
-    place: b.place,
-    notes: b.notes,
-    submittedAt: b.submittedAt.toISOString().slice(0, 10),
-    createdAt: b.createdAt.toISOString().slice(0, 10),
-  }));
+  return rows.map(toRow);
+}
+
+// Every backlink for the project, ignoring the report's date range. The report
+// itself only counts in-range entries, but a link logged with today's date sits
+// outside the (GSC-lagged) range — without this it would be invisible and so
+// impossible to edit or delete.
+export async function listAllBacklinks(
+  projectId: string,
+): Promise<BacklinkRow[]> {
+  const rows = await prisma.backlink.findMany({
+    where: { projectId },
+    orderBy: { submittedAt: "desc" },
+  });
+  return rows.map(toRow);
 }
 
 // Tiny robust-ish CSV parser. Handles quoted fields, commas inside quotes,

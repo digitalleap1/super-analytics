@@ -13,6 +13,10 @@ type Props = {
   projectName: string;
   rangeLabel: string;
   rows: BacklinkRow[];
+  // Every backlink for the project, ignoring the date range. Lets the table
+  // surface entries logged outside the report window (which would otherwise be
+  // invisible and impossible to edit). Absent in snapshot / share views.
+  allRows?: BacklinkRow[];
   monthly: BacklinkMonthBucket[];
   readOnly?: boolean;
   // Cap how many backlink rows the table shows (most recent first). The pie +
@@ -25,6 +29,7 @@ export function BacklinksSection({
   projectName,
   rangeLabel,
   rows,
+  allRows,
   monthly,
   readOnly = false,
   limit,
@@ -72,6 +77,8 @@ export function BacklinksSection({
         projectId={projectId}
         projectName={projectName}
         rows={tableRows}
+        allRows={readOnly ? undefined : allRows}
+        rangeLabel={rangeLabel}
         readOnly={readOnly}
       />
     </Card>

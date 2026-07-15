@@ -75,6 +75,7 @@ import { QuickShareButton } from "@/components/reports/quick-share-button";
 import { ReportLogoHeader } from "@/components/reports/report-logo-header";
 import { ReportSummaryCard } from "@/components/reports/report-summary-card";
 import { EditableTextSection } from "@/components/reports/editable-text-section";
+import { OtherTasksSection } from "@/components/reports/other-tasks-section";
 import { QuickTemplateSwitcher } from "@/components/reports/quick-template-switcher";
 import { formatBulletValue, type ReportSummary } from "@/lib/report-summary";
 import type {
@@ -112,6 +113,9 @@ type Props = {
   prevChannels?: Ga4ChannelRow[] | null;
   keywords: KeywordRow[];
   backlinks: BacklinkRow[];
+  // Every backlink regardless of the report range, so out-of-range entries stay
+  // manageable. Absent in snapshot / share views.
+  allBacklinks?: BacklinkRow[];
   backlinkMonthly: BacklinkMonthBucket[];
   fromDate: string; // YYYY-MM-DD; used by the Save report dialog
   toDate: string;
@@ -542,12 +546,12 @@ export function EditableProjectReport(props: Props) {
                     cfg.sections.chartPositionTrend
                       ? props.overview.series
                       : undefined,
-                  analysisNotes: cfg.sections.analysis
-                    ? props.analysisNotes ?? null
-                    : null,
-                  otherTasks: cfg.sections.otherTasks
-                    ? props.otherTasks ?? null
-                    : null,
+                  // Use the live drafts, not props: the editors persist via
+                  // PATCH and bubble the saved value up, so props stays stale
+                  // until a server refresh — which used to export an empty
+                  // Analysis / Other tasks section.
+                  analysisNotes: cfg.sections.analysis ? analysisDraft : null,
+                  otherTasks: cfg.sections.otherTasks ? otherTasksDraft : null,
                 }}
               />
               {props.mode !== "snapshot" ? (
@@ -986,6 +990,7 @@ export function EditableProjectReport(props: Props) {
               projectName={props.project.name}
               rangeLabel={props.rangeLabel}
               rows={props.backlinks}
+              allRows={props.allBacklinks}
               monthly={props.backlinkMonthly}
               readOnly={props.mode === "snapshot"}
               limit={limitFor(cfg, "backlinks")}
@@ -998,15 +1003,13 @@ export function EditableProjectReport(props: Props) {
           />
         ) : null}
 
-        {/* Other tasks (free text — on-page, technical SEO, content, etc.) */}
+        {/* Other tasks — custom tasks, each with a name, link and notes. */}
         {cfg.sections.otherTasks ? (
           <section data-pptx-slide>
-            <EditableTextSection
-              fieldKey="otherTasks"
+            <OtherTasksSection
               projectId={props.project.id}
               title="Other tasks"
-              helper="On-page changes, technical fixes, content updates, outreach — anything the client should know about."
-              placeholder="List the off-report work completed this period. Examples: 'Updated meta tags on 12 service pages', 'Fixed broken canonical on /pricing', 'Outreached to 30 prospects'."
+              helper="On-page changes, technical fixes, content updates, outreach — add a task with a name, an optional link and notes."
               initialValue={otherTasksDraft}
               readOnly={props.mode === "snapshot"}
               icon={<ClipboardList className="h-3.5 w-3.5" />}
@@ -1015,7 +1018,7 @@ export function EditableProjectReport(props: Props) {
           </section>
         ) : editing ? (
           <HiddenSectionStub
-            name="Other tasks (free-text)"
+            name="Other tasks"
             onShow={() => setSection("otherTasks", true)}
           />
         ) : null}

@@ -24,7 +24,9 @@ export const projectUpdateSchema = projectCreateSchema.partial().extend({
   ga4PropertyId: z.string().max(50).optional().nullable(),
   templateId: z.string().optional().nullable(),
   analysisNotes: z.string().max(10000).optional().nullable(),
-  otherTasks: z.string().max(10000).optional().nullable(),
+  // Structured tasks are stored as a JSON array, which costs more characters
+  // than the old free text — give it headroom.
+  otherTasks: z.string().max(30000).optional().nullable(),
 });
 
 export type ProjectUpdateInput = z.infer<typeof projectUpdateSchema>;

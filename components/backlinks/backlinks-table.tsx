@@ -8,6 +8,7 @@ import {
   ChevronsUpDown,
   ExternalLink,
   Loader2,
+  Pencil,
   Search,
   Trash2,
   X,
@@ -24,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CsvExportButton } from "@/components/reports/csv-export-button";
+import { EditBacklinkDialog } from "@/components/backlinks/edit-backlink-dialog";
 import {
   BACKLINK_CATEGORIES,
   categoryMeta,
@@ -35,6 +37,10 @@ type Props = {
   projectId: string;
   projectName: string;
   rows: BacklinkRow[];
+  // Every backlink regardless of the report's date range. A link logged today
+  // sits outside the (lagged) range, so without this it can't be seen or edited.
+  allRows?: BacklinkRow[];
+  rangeLabel?: string;
   readOnly?: boolean;
 };
 
@@ -46,11 +52,21 @@ export function BacklinksTable({
   projectId,
   projectName,
   rows,
+  allRows,
+  rangeLabel,
   readOnly = false,
 }: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+  // Row currently open in the edit dialog (null = closed).
+  const [editRow, setEditRow] = useState<BacklinkRow | null>(null);
+  // Show every backlink (ignoring the report's date range) so out-of-range
+  // entries can still be edited or deleted.
+  const [showAll, setShowAll] = useState(false);
+
+  const source = showAll && allRows ? allRows : rows;
+  const outOfRange = allRows ? Math.max(0, allRows.length - rows.length) : 0;
 
   // Filters
   const [category, setCategory] = useState<string>(ALL);
@@ -85,7 +101,7 @@ export function BacklinksTable({
     const q = query.trim().toLowerCase();
     const fromDate = from ? new Date(from) : null;
     const toDate = to ? new Date(to) : null;
-    let out = rows.filter((r) => {
+    let out = source.filter((r) => {
       if (category !== ALL && r.category !== category) return false;
       if (fromDate && new Date(r.submittedAt) < fromDate) return false;
       if (toDate && new Date(r.submittedAt) > toDate) return false;
@@ -123,7 +139,7 @@ export function BacklinksTable({
       return 0;
     });
     return out;
-  }, [rows, category, query, from, to, sortKey, sortDir]);
+  }, [source, category, query, from, to, sortKey, sortDir]);
 
   const hasFilters =
     category !== ALL || query !== "" || from !== "" || to !== "";
@@ -168,10 +184,54 @@ export function BacklinksTable({
     });
   }
 
+  // Delete a single row from its own row action.
+  function delOne(row: BacklinkRow) {
+    if (!confirm(`Delete this backlink?\n\n${row.url}`)) return;
+    startTransition(async () => {
+      const res = await fetch(
+        `/api/projects/${projectId}/backlinks?ids=${row.id}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) {
+        toast.error("Could not delete");
+        return;
+      }
+      toast.success("Backlink deleted");
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(row.id);
+        return next;
+      });
+      router.refresh();
+    });
+  }
+
   return (
     <div className="space-y-3">
+      {/* Backlinks dated outside the report range (e.g. logged today, while the
+          range lags a few days) would otherwise be invisible — surface them. */}
+      {!readOnly && outOfRange > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200 print:hidden">
+          <span>
+            <strong>{outOfRange}</strong> backlink{outOfRange === 1 ? "" : "s"}{" "}
+            {outOfRange === 1 ? "is" : "are"} dated outside{" "}
+            {rangeLabel ? <strong>{rangeLabel}</strong> : "this date range"}, so{" "}
+            {outOfRange === 1 ? "it isn't" : "they aren't"} counted in this
+            report.
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 shrink-0 bg-background"
+            onClick={() => setShowAll((s) => !s)}
+          >
+            {showAll ? "Show in-range only" : "Show all dates"}
+          </Button>
+        </div>
+      ) : null}
+
       {/* Filters row */}
-      {rows.length > 0 ? (
+      {source.length > 0 ? (
         <div className="flex flex-wrap items-end gap-2 rounded-md border bg-muted/30 p-2.5 print:hidden">
           <div className="min-w-[180px] flex-1 space-y-1">
             <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -244,7 +304,7 @@ export function BacklinksTable({
       {/* Empty state — show only when nothing matches OR no rows at all. */}
       {filtered.length === 0 ? (
         <div className="rounded-md border border-dashed bg-card/40 p-8 text-center text-sm text-muted-foreground">
-          {rows.length === 0
+          {source.length === 0
             ? "No backlinks logged in this date range yet."
             : "No backlinks match the current filters."}
         </div>
@@ -274,7 +334,8 @@ export function BacklinksTable({
               ) : (
                 <span className="text-sm text-muted-foreground">
                   {filtered.length} backlink{filtered.length === 1 ? "" : "s"}
-                  {hasFilters ? ` of ${rows.length}` : ""}
+                  {hasFilters ? ` of ${source.length}` : ""}
+                  {showAll ? " · all dates" : ""}
                 </span>
               )}
             </div>
@@ -344,6 +405,11 @@ export function BacklinksTable({
                     Date
                     <SortIcon for="submittedAt" />
                   </th>
+                  {!readOnly ? (
+                    <th className="w-20 px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground print:hidden">
+                      Actions
+                    </th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -397,6 +463,32 @@ export function BacklinksTable({
                       <td className="px-3 py-2 tabular-nums text-muted-foreground">
                         {r.submittedAt}
                       </td>
+                      {!readOnly ? (
+                        <td className="px-3 py-2 print:hidden">
+                          <div className="flex items-center justify-end gap-0.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              onClick={() => setEditRow(r)}
+                              disabled={isPending}
+                              title="Edit backlink"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => delOne(r)}
+                              disabled={isPending}
+                              title="Delete backlink"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      ) : null}
                     </tr>
                   );
                 })}
@@ -405,6 +497,16 @@ export function BacklinksTable({
           </div>
         </>
       )}
+
+      {!readOnly ? (
+        <EditBacklinkDialog
+          projectId={projectId}
+          backlink={editRow}
+          onOpenChange={(open) => {
+            if (!open) setEditRow(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
