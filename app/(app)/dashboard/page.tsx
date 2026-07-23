@@ -1,8 +1,11 @@
-import { LayoutDashboard } from "lucide-react";
+import Link from "next/link";
+import { LayoutDashboard, Plus } from "lucide-react";
 
 import { listAccessibleProjectsForUser, requireWorkspace } from "@/lib/projects";
 import { NewProjectCard, ProjectCard } from "@/components/projects/project-card";
 import { EmptyProjectsState } from "@/components/projects/empty-state";
+import { Button } from "@/components/ui/button";
+import { QuickAddProject } from "@/components/projects/quick-add-project";
 import { presetRange, ymd } from "@/lib/date-ranges";
 import { withCache } from "@/lib/cache";
 import { getGscOverview } from "@/lib/google/gsc";
@@ -104,6 +107,15 @@ export default async function DashboardPage() {
                 ) : null}
               </p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <QuickAddProject />
+            <Button asChild>
+              <Link href="/projects/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New project
+              </Link>
+            </Button>
           </div>
         </div>
       </div>
