@@ -187,47 +187,73 @@ export async function listGa4Properties(opts: {
   }
 
   try {
-    const res = await fetch(
-      "https://analyticsadmin.googleapis.com/v1beta/accountSummaries",
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    if (!res.ok) {
-      // Try to surface Google's actual error message so the user knows what to do.
-      let message = `Google Analytics Admin API returned ${res.status}`;
-      try {
-        const errBody = (await res.json()) as {
-          error?: { message?: string; status?: string };
-        };
-        if (errBody.error?.message) {
-          message = errBody.error.message;
-          // The Admin API needs to be explicitly enabled in the GCP console.
-          // Detect that specific case and rewrite the message.
-          if (
-            /api has not been used|disabled/i.test(message) ||
-            errBody.error.status === "PERMISSION_DENIED"
-          ) {
-            message =
-              "Google Analytics Admin API isn't enabled for this project. Go to Google Cloud Console → APIs & Services → Library, search for 'Google Analytics Admin API', and click Enable. Then refresh this page.";
-          }
-        }
-      } catch {
-        /* keep the generic message */
-      }
-      console.error("[ga4] listGa4Properties failed:", res.status, message);
-      return {
-        properties: stubGa4Properties(stubSeed),
-        source: "stub",
-        error: message,
-      };
-    }
-    const json = (await res.json()) as {
-      accountSummaries?: Array<{
-        displayName?: string;
-        propertySummaries?: Array<{ property?: string; displayName?: string }>;
-      }>;
+    // accountSummaries is paginated: the default page holds only 50 accounts, so
+    // agency accounts with hundreds of GA4 accounts would silently lose every
+    // property past the first page (the property just never appears in the
+    // picker). Request the max page size (200) and follow nextPageToken until
+    // Google stops handing one back so the dropdown lists *every* property.
+    type AccountSummary = {
+      displayName?: string;
+      propertySummaries?: Array<{ property?: string; displayName?: string }>;
     };
+    const summaries: AccountSummary[] = [];
+    let pageToken: string | undefined;
+    // Hard page cap as a runaway guard: 200 accounts/page × 25 = 5,000 accounts.
+    for (let page = 0; page < 25; page++) {
+      const url = new URL(
+        "https://analyticsadmin.googleapis.com/v1beta/accountSummaries",
+      );
+      url.searchParams.set("pageSize", "200");
+      if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        // Try to surface Google's actual error message so the user knows what to do.
+        let message = `Google Analytics Admin API returned ${res.status}`;
+        try {
+          const errBody = (await res.json()) as {
+            error?: { message?: string; status?: string };
+          };
+          if (errBody.error?.message) {
+            message = errBody.error.message;
+            // The Admin API needs to be explicitly enabled in the GCP console.
+            // Detect that specific case and rewrite the message.
+            if (
+              /api has not been used|disabled/i.test(message) ||
+              errBody.error.status === "PERMISSION_DENIED"
+            ) {
+              message =
+                "Google Analytics Admin API isn't enabled for this project. Go to Google Cloud Console → APIs & Services → Library, search for 'Google Analytics Admin API', and click Enable. Then refresh this page.";
+            }
+          }
+        } catch {
+          /* keep the generic message */
+        }
+        console.error("[ga4] listGa4Properties failed:", res.status, message);
+        // If we already collected some accounts from earlier pages, return those
+        // rather than dropping everyone to stub on a late-page hiccup.
+        if (summaries.length === 0) {
+          return {
+            properties: stubGa4Properties(stubSeed),
+            source: "stub",
+            error: message,
+          };
+        }
+        break;
+      }
+      const json = (await res.json()) as {
+        accountSummaries?: AccountSummary[];
+        nextPageToken?: string;
+      };
+      summaries.push(...(json.accountSummaries ?? []));
+      pageToken = json.nextPageToken;
+      if (!pageToken) break;
+    }
+
     const out: Ga4PropertyListItem[] = [];
-    for (const acc of json.accountSummaries ?? []) {
+    for (const acc of summaries) {
       for (const p of acc.propertySummaries ?? []) {
         const propertyId = (p.property ?? "").replace("properties/", "");
         if (!propertyId) continue;
