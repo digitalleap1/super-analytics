@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  ProjectGoogleConnect,
+  type GoogleConn,
+} from "@/components/projects/project-google-connect";
+import { DataSourcesForm } from "@/components/projects/data-sources-form";
 
 type Step = 1 | 2 | 3 | 4;
+
+type ConnStatus = {
+  gsc: GoogleConn;
+  ga4: GoogleConn;
+  gscSiteUrl: string | null;
+  ga4PropertyId: string | null;
+};
 
 const COUNTRIES: { code: string; label: string }[] = [
   { code: "usa", label: "United States" },
@@ -40,6 +52,13 @@ export function NewProjectWizard() {
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+
+  // The project is created the moment step 1 is completed (not at the end), so
+  // the "Connect Google" and "Pick data sources" steps can operate on a real
+  // project id — the OAuth flow signs the project id into its state, and the
+  // data-source pickers save against /api/projects/<id>. We stash the id so
+  // going Back/Next doesn't create duplicate projects.
+  const [projectId, setProjectId] = useState<string | null>(null);
 
   const [keywords, setKeywords] = useState("");
   const [country, setCountry] = useState("usa");
@@ -72,8 +91,24 @@ export function NewProjectWizard() {
     return true;
   }
 
-  function finalSave() {
+  // Create the project (once) then advance. If it already exists, patch the
+  // basics in case the user edited them after going Back.
+  function createOrUpdateThenAdvance() {
+    if (!validateStep1()) return;
     startTransition(async () => {
+      if (projectId) {
+        const res = await fetch(`/api/projects/${projectId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, domain, logoUrl: logoDataUrl }),
+        });
+        if (!res.ok) {
+          toast.error("Could not update project");
+          return;
+        }
+        setStep(2);
+        return;
+      }
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -87,13 +122,21 @@ export function NewProjectWizard() {
       const { project } = (await res.json()) as {
         project: { id: string; name: string };
       };
+      setProjectId(project.id);
+      toast.success(`Created ${project.name} — now connect Google`);
+      setStep(2);
+    });
+  }
 
+  function finish() {
+    if (!projectId) return;
+    startTransition(async () => {
       const queries = keywords
         .split(/\r?\n/)
         .map((q) => q.trim())
         .filter(Boolean);
       if (queries.length > 0) {
-        const kwRes = await fetch(`/api/projects/${project.id}/keywords`, {
+        const kwRes = await fetch(`/api/projects/${projectId}/keywords`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -104,20 +147,16 @@ export function NewProjectWizard() {
           }),
         });
         if (!kwRes.ok) {
-          toast.warning(
-            "Project created, but some keywords could not be added.",
-          );
+          toast.warning("Project saved, but some keywords could not be added.");
         }
       }
-
-      toast.success(`Created ${project.name}`);
-      router.push(`/projects/${project.id}`);
+      router.push(`/projects/${projectId}`);
       router.refresh();
     });
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-3xl">
       <StepIndicator current={step} />
       <div className="mt-8 space-y-6">
         {step === 1 && (
@@ -131,8 +170,10 @@ export function NewProjectWizard() {
             onLogoClear={() => setLogoDataUrl(null)}
           />
         )}
-        {step === 2 && <Step2Locked />}
-        {step === 3 && <Step3Locked />}
+        {step === 2 && projectId && <WizardConnectStep projectId={projectId} />}
+        {step === 3 && projectId && (
+          <WizardDataSourcesStep projectId={projectId} />
+        )}
         {step === 4 && (
           <Step4
             keywords={keywords}
@@ -155,22 +196,25 @@ export function NewProjectWizard() {
         >
           <ChevronLeft className="mr-1 h-4 w-4" /> Back
         </Button>
-        {step < 4 ? (
-          <Button
-            type="button"
-            onClick={() => {
-              if (step === 1 && !validateStep1()) return;
-              setStep((s) => Math.min(4, (s + 1) as Step) as Step);
-            }}
-          >
+        {step === 1 ? (
+          <Button type="button" onClick={createOrUpdateThenAdvance} disabled={isPending}>
+            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Next <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
+        ) : step < 4 ? (
+          <Button
+            type="button"
+            onClick={() => setStep((s) => Math.min(4, (s + 1) as Step) as Step)}
+          >
+            {step === 2 || step === 3 ? "Continue" : "Next"}{" "}
+            <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
         ) : (
-          <Button type="button" onClick={finalSave} disabled={isPending}>
+          <Button type="button" onClick={finish} disabled={isPending}>
             {isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : null}
-            Create project
+            Finish
           </Button>
         )}
       </div>
@@ -299,32 +343,92 @@ function Step1({
   );
 }
 
-function Step2Locked() {
+// Fetches the project's live Google connection state and re-fetches whenever
+// the window regains focus — so after the OAuth popup finishes and the user
+// returns to this tab, the "Connect" buttons flip to "Connected as …".
+function useConnStatus(projectId: string): {
+  status: ConnStatus | null;
+  refetch: () => void;
+} {
+  const [status, setStatus] = useState<ConnStatus | null>(null);
+
+  const refetch = useCallback(() => {
+    let cancelled = false;
+    fetch(`/api/projects/${projectId}/integrations/status`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: ConnStatus | null) => {
+        if (!cancelled && data) setStatus(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  useEffect(() => {
+    const cleanup = refetch();
+    const onFocus = () => refetch();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cleanup?.();
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [refetch]);
+
+  return { status, refetch };
+}
+
+function WizardConnectStep({ projectId }: { projectId: string }) {
+  const { status } = useConnStatus(projectId);
   return (
-    <div className="space-y-4 rounded-lg border border-dashed bg-card/40 p-6 text-center">
-      <Lock className="mx-auto h-6 w-6 text-muted-foreground" />
+    <div className="space-y-4">
       <div>
-        <h3 className="font-semibold">Connect Google</h3>
+        <h2 className="text-xl font-semibold">Connect Google</h2>
         <p className="text-sm text-muted-foreground">
-          Skip this for now — you can connect Search Console and Analytics later
-          from the project&apos;s Settings page.
+          Authorise Search Console and Analytics for this client. Connecting
+          opens Google in a new tab — finish there, then come back and this
+          updates automatically. Optional; you can also do it later from
+          Settings.
         </p>
       </div>
+      <ProjectGoogleConnect
+        projectId={projectId}
+        gsc={status?.gsc ?? null}
+        ga4={status?.ga4 ?? null}
+        canManage
+      />
     </div>
   );
 }
 
-function Step3Locked() {
+function WizardDataSourcesStep({ projectId }: { projectId: string }) {
+  const { status } = useConnStatus(projectId);
   return (
-    <div className="space-y-4 rounded-lg border border-dashed bg-card/40 p-6 text-center">
-      <Lock className="mx-auto h-6 w-6 text-muted-foreground" />
+    <div className="space-y-4">
       <div>
-        <h3 className="font-semibold">Pick GSC site &amp; GA4 property</h3>
+        <h2 className="text-xl font-semibold">Pick data sources</h2>
         <p className="text-sm text-muted-foreground">
-          Configurable later from project Settings — both are optional and can
-          be changed anytime.
+          Choose the Search Console site and GA4 property this project should
+          report on, then save. Both are optional and changeable anytime.
         </p>
       </div>
+      {status ? (
+        <DataSourcesForm
+          key={`${status.gscSiteUrl ?? ""}:${status.ga4PropertyId ?? ""}`}
+          projectId={projectId}
+          initial={{
+            gscSiteUrl: status.gscSiteUrl,
+            ga4PropertyId: status.ga4PropertyId,
+          }}
+          gscEmail={status.gsc?.email ?? null}
+          ga4Email={status.ga4?.email ?? null}
+        />
+      ) : (
+        <div className="flex items-center gap-2 rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading your sites and
+          properties…
+        </div>
+      )}
     </div>
   );
 }

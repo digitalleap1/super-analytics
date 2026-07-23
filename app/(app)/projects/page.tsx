@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getProjectAccess } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { ProjectsTable, type ProjectRow } from "@/components/projects/projects-table";
+import { QuickAddProject } from "@/components/projects/quick-add-project";
 
 export const metadata = {
   title: "Projects — Super Analytics",
@@ -93,12 +94,15 @@ export default async function ProjectsListPage() {
               </p>
             </div>
           </div>
-          <Button asChild>
-            <Link href="/projects/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New project
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <QuickAddProject />
+            <Button asChild>
+              <Link href="/projects/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New project
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 
