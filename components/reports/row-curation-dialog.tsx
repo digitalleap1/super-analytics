@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ListFilter, Loader2, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Loader2, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,9 +11,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatNumber, formatPosition } from "@/lib/utils";
 import type {
@@ -23,23 +29,59 @@ import type {
 } from "@/lib/google/types";
 import type { ReportExclusions } from "@/lib/report-exclusions";
 
-type Kind = "queries" | "pages" | "channels";
+export type CurationTab = "queries" | "pages" | "channels";
+type FilterMode = "contains" | "not_contains" | "regex";
 
 type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  activeTab: CurationTab;
+  onActiveTabChange: (tab: CurationTab) => void;
   queries: GscQueryRow[];
   pages: GscPageRow[];
   channels: Ga4ChannelRow[];
   exclusions: ReportExclusions;
   onChange: (next: ReportExclusions) => void;
-  // Persist current selection; returns when done so we can stop the spinner.
   onSave: () => Promise<void>;
   saving?: boolean;
 };
 
-// A checklist of every fetched row across the three tables. Unchecking a row
-// excludes it from the report and all exports. "Save selections" persists so
-// the same junk never comes back next period.
+// Compile a GSC-style filter into a predicate. Invalid regex is reported so the
+// user can fix it rather than silently matching nothing.
+function useMatcher(mode: FilterMode, text: string) {
+  return useMemo(() => {
+    const raw = text.trim();
+    if (!raw) return { test: () => true, error: null as string | null };
+    if (mode === "regex") {
+      try {
+        const re = new RegExp(raw, "i");
+        return { test: (s: string) => re.test(s), error: null };
+      } catch (err) {
+        return {
+          test: () => true,
+          error: err instanceof Error ? err.message : "Invalid regex",
+        };
+      }
+    }
+    const needle = raw.toLowerCase();
+    if (mode === "not_contains") {
+      return {
+        test: (s: string) => !s.toLowerCase().includes(needle),
+        error: null,
+      };
+    }
+    return { test: (s: string) => s.toLowerCase().includes(needle), error: null };
+  }, [mode, text]);
+}
+
+// A checklist of every fetched row, with a GSC-style Contains / Doesn't contain
+// / Regex filter and bulk "apply to matching" actions. Unchecking a row hides
+// it from the report and every export; selections persist per project.
 export function RowCurationDialog({
+  open,
+  onOpenChange,
+  activeTab,
+  onActiveTabChange,
   queries,
   pages,
   channels,
@@ -48,8 +90,15 @@ export function RowCurationDialog({
   onSave,
   saving = false,
 }: Props) {
-  const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
+  const [mode, setMode] = useState<FilterMode>("contains");
+  const [text, setText] = useState("");
+  const matcher = useMatcher(mode, text);
+
+  // Clear the filter box each time the dialog opens so a stale regex doesn't
+  // silently hide rows the next time around.
+  useEffect(() => {
+    if (open) setText("");
+  }, [open]);
 
   const excluded = useMemo(
     () => ({
@@ -60,22 +109,23 @@ export function RowCurationDialog({
     [exclusions],
   );
 
-  function toggle(kind: Kind, key: string, include: boolean) {
+  function toggle(kind: CurationTab, key: string, include: boolean) {
     const set = new Set(exclusions[kind]);
     if (include) set.delete(key);
     else set.add(key);
     onChange({ ...exclusions, [kind]: Array.from(set) });
   }
 
-  function setAll(kind: Kind, keys: string[], include: boolean) {
-    onChange({
-      ...exclusions,
-      [kind]: include ? [] : Array.from(new Set(keys)),
-    });
+  // Bulk: include/exclude every key in `keys` at once (used by both the
+  // whole-list buttons and the "apply to matching" buttons).
+  function applyBulk(kind: CurationTab, keys: string[], include: boolean) {
+    const set = new Set(exclusions[kind]);
+    for (const k of keys) {
+      if (include) set.delete(k);
+      else set.add(k);
+    }
+    onChange({ ...exclusions, [kind]: Array.from(set) });
   }
-
-  const needle = q.trim().toLowerCase();
-  const match = (s: string) => !needle || s.toLowerCase().includes(needle);
 
   const totalExcluded =
     exclusions.queries.length +
@@ -92,26 +142,52 @@ export function RowCurationDialog({
     label,
     metric,
   }: {
-    kind: Kind;
+    kind: CurationTab;
     rows: T[];
     keyOf: (r: T) => string;
     label: (r: T) => string;
     metric: (r: T) => string;
   }) {
-    const keys = rows.map(keyOf);
-    const visible = rows.filter((r) => match(label(r)) || match(keyOf(r)));
-    const includedCount = keys.filter((k) => !excluded[kind].has(k)).length;
+    const allKeys = rows.map(keyOf);
+    // A row matches if its label OR its raw key matches the filter.
+    const matched = rows.filter(
+      (r) => matcher.test(label(r)) || matcher.test(keyOf(r)),
+    );
+    const matchedKeys = matched.map(keyOf);
+    const includedCount = allKeys.filter((k) => !excluded[kind].has(k)).length;
+    const filtering = text.trim().length > 0;
+
     return (
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <span>
-            {includedCount} of {keys.length} included
+            {includedCount} of {allKeys.length} included
+            {filtering ? ` · ${matched.length} match` : ""}
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {filtering ? (
+              <>
+                <button
+                  type="button"
+                  className="rounded border px-1.5 py-0.5 hover:bg-muted hover:text-foreground"
+                  onClick={() => applyBulk(kind, matchedKeys, false)}
+                >
+                  Deselect {matched.length} matching
+                </button>
+                <button
+                  type="button"
+                  className="rounded border px-1.5 py-0.5 hover:bg-muted hover:text-foreground"
+                  onClick={() => applyBulk(kind, matchedKeys, true)}
+                >
+                  Select {matched.length} matching
+                </button>
+                <span aria-hidden>·</span>
+              </>
+            ) : null}
             <button
               type="button"
               className="hover:text-foreground hover:underline"
-              onClick={() => setAll(kind, keys, true)}
+              onClick={() => applyBulk(kind, allKeys, true)}
             >
               Select all
             </button>
@@ -119,17 +195,19 @@ export function RowCurationDialog({
             <button
               type="button"
               className="hover:text-foreground hover:underline"
-              onClick={() => setAll(kind, keys, false)}
+              onClick={() => applyBulk(kind, allKeys, false)}
             >
               Deselect all
             </button>
           </div>
         </div>
-        <div className="max-h-[46vh] space-y-0.5 overflow-y-auto rounded-md border p-1">
-          {visible.length === 0 ? (
-            <p className="p-3 text-sm text-muted-foreground">No matching rows.</p>
+        <div className="max-h-[44vh] space-y-0.5 overflow-y-auto rounded-md border p-1">
+          {matched.length === 0 ? (
+            <p className="p-3 text-sm text-muted-foreground">
+              No rows match this filter.
+            </p>
           ) : (
-            visible.map((r) => {
+            matched.map((r) => {
               const key = keyOf(r);
               const include = !excluded[kind].has(key);
               return (
@@ -163,40 +241,53 @@ export function RowCurationDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <ListFilter className="mr-1.5 h-4 w-4" />
-          Choose rows
-          {totalExcluded > 0 ? (
-            <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 text-xs text-primary">
-              {totalExcluded} hidden
-            </span>
-          ) : null}
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Choose rows to include</DialogTitle>
+          <DialogTitle>Filter &amp; select rows</DialogTitle>
           <DialogDescription>
-            Uncheck any query, page or channel you don&apos;t want the client to
-            see. Deselected rows are removed from the report and every export
-            (PDF, PPT, PNG, CSV, shared link). Saved per project, so recurring
-            junk stays hidden next period.
+            Filter like Search Console (Contains / Doesn&apos;t contain / Regex),
+            then choose exactly which rows the client sees. Deselected rows are
+            removed from the report and every export (PDF, PPT, PNG, CSV, shared
+            link) and stay hidden next period.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Filter rows…"
-            className="pl-8"
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={mode} onValueChange={(v) => setMode(v as FilterMode)}>
+            <SelectTrigger className="h-9 w-[170px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="contains">Contains</SelectItem>
+              <SelectItem value="not_contains">Doesn&apos;t contain</SelectItem>
+              <SelectItem value="regex">Custom regex</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={
+                mode === "regex"
+                  ? "e.g. taxidermy|dead|dying"
+                  : "Type to filter…"
+              }
+              className="pl-8"
+            />
+          </div>
         </div>
+        {matcher.error ? (
+          <p className="text-xs text-destructive">
+            Invalid regex: {matcher.error}
+          </p>
+        ) : null}
 
-        <Tabs defaultValue="queries">
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => onActiveTabChange(v as CurationTab)}
+        >
           <TabsList>
             <TabsTrigger value="queries">Queries ({queries.length})</TabsTrigger>
             <TabsTrigger value="pages">Pages ({pages.length})</TabsTrigger>
@@ -242,13 +333,13 @@ export function RowCurationDialog({
             {totalExcluded} row{totalExcluded === 1 ? "" : "s"} hidden
           </p>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
               Close
             </Button>
             <Button
               onClick={async () => {
                 await onSave();
-                setOpen(false);
+                onOpenChange(false);
               }}
               disabled={saving}
             >

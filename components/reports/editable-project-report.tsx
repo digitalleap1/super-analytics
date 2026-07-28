@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  ListFilter,
   Loader2,
   MousePointerClick,
   Pencil,
@@ -71,7 +72,10 @@ import {
 } from "@/lib/backlinks";
 import { BacklinksSection } from "@/components/backlinks/backlinks-section";
 import { SaveReportDialog } from "@/components/reports/save-report-dialog";
-import { RowCurationDialog } from "@/components/reports/row-curation-dialog";
+import {
+  RowCurationDialog,
+  type CurationTab,
+} from "@/components/reports/row-curation-dialog";
 import {
   applyExclusions,
   normalizeExclusions,
@@ -236,6 +240,14 @@ export function EditableProjectReport(props: Props) {
     normalizeExclusions(props.initialExclusions),
   );
   const [savingExclusions, startSavingExclusions] = useTransition();
+  // Controlled state for the Filter & select dialog — opened both from the
+  // toolbar and from a button inside each GSC/GA table tab.
+  const [curateOpen, setCurateOpen] = useState(false);
+  const [curateTab, setCurateTab] = useState<CurationTab>("queries");
+  const openCurate = (tab: CurationTab) => {
+    setCurateTab(tab);
+    setCurateOpen(true);
+  };
 
   // Filter the raw rows once, up front. Everything downstream — on-screen
   // tables, PDF/PPT/PNG/CSV exports, saved snapshots and shared links — reads
@@ -613,15 +625,19 @@ export function EditableProjectReport(props: Props) {
               />
               {props.mode !== "snapshot" ? (
                 <>
-                  <RowCurationDialog
-                    queries={props.queries}
-                    pages={props.pages}
-                    channels={props.channels}
-                    exclusions={exclusions}
-                    onChange={setExclusions}
-                    onSave={() => persistExclusions(exclusions)}
-                    saving={savingExclusions}
-                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openCurate("queries")}
+                  >
+                    <ListFilter className="mr-1.5 h-4 w-4" />
+                    Filter &amp; select rows
+                    {totalExcluded(exclusions) > 0 ? (
+                      <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 text-xs text-primary">
+                        {totalExcluded(exclusions)} hidden
+                      </span>
+                    ) : null}
+                  </Button>
                   <QuickShareButton
                     projectId={props.project.id}
                     defaultName={`${props.project.name} — ${props.rangeLabel}`}
@@ -1027,6 +1043,7 @@ export function EditableProjectReport(props: Props) {
               showPages={cfg.sections.topPages}
               showChannels={cfg.sections.ga4Channels}
               rowLimit={100}
+              onCurate={props.mode !== "snapshot" ? openCurate : undefined}
             />
           </section>
         ) : editing ? (
@@ -1095,6 +1112,22 @@ export function EditableProjectReport(props: Props) {
           </p>
         ) : null}
       </div>
+
+      {isLive ? (
+        <RowCurationDialog
+          open={curateOpen}
+          onOpenChange={setCurateOpen}
+          activeTab={curateTab}
+          onActiveTabChange={setCurateTab}
+          queries={props.queries}
+          pages={props.pages}
+          channels={props.channels}
+          exclusions={exclusions}
+          onChange={setExclusions}
+          onSave={() => persistExclusions(exclusions)}
+          saving={savingExclusions}
+        />
+      ) : null}
 
       <Dialog
         open={!!confirmShared}

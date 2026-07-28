@@ -3,6 +3,9 @@
 import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 
+import { ListFilter } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CsvExportButton } from "./csv-export-button";
 import { DeltaCell } from "./delta-cell";
@@ -28,6 +31,9 @@ type Props = {
   showPages?: boolean;
   showChannels?: boolean;
   rowLimit?: number;
+  // When provided (live report only), each tab shows a "Filter & select" button
+  // that opens the row-curation dialog focused on that tab.
+  onCurate?: (tab: "queries" | "pages" | "channels") => void;
 };
 
 function valueWithDelta(
@@ -59,7 +65,15 @@ export function ReportTables({
   showPages = true,
   showChannels = true,
   rowLimit = 50,
+  onCurate,
 }: Props) {
+  const curateButton = (tab: "queries" | "pages" | "channels") =>
+    onCurate ? (
+      <Button variant="outline" size="sm" onClick={() => onCurate(tab)}>
+        <ListFilter className="mr-1.5 h-4 w-4" />
+        Filter &amp; select
+      </Button>
+    ) : null;
   // Build O(1) lookup maps for previous-period rows so each table cell can
   // render a delta indicator next to the current value.
   const prevQueryByKey = useMemo(
@@ -279,7 +293,8 @@ export function ReportTables({
           <h3 className="hidden text-sm font-semibold print:block">
             Top queries
           </h3>
-          <div className="flex justify-end gap-2 print:hidden">
+          <div className="flex flex-wrap justify-end gap-2 print:hidden">
+            {curateButton("queries")}
             <CsvExportButton
               filename={`${projectName}-queries`}
               rows={queries as unknown as Record<string, unknown>[]}
@@ -330,7 +345,8 @@ export function ReportTables({
           <h3 className="hidden text-sm font-semibold print:block">
             Top pages
           </h3>
-          <div className="flex justify-end gap-2 print:hidden">
+          <div className="flex flex-wrap justify-end gap-2 print:hidden">
+            {curateButton("pages")}
             <CsvExportButton
               filename={`${projectName}-pages`}
               rows={pages as unknown as Record<string, unknown>[]}
@@ -381,7 +397,8 @@ export function ReportTables({
           <h3 className="hidden text-sm font-semibold print:block">
             GA4 channels
           </h3>
-          <div className="flex justify-end gap-2 print:hidden">
+          <div className="flex flex-wrap justify-end gap-2 print:hidden">
+            {curateButton("channels")}
             <CsvExportButton
               filename={`${projectName}-channels`}
               rows={channels as unknown as Record<string, unknown>[]}
