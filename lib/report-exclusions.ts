@@ -30,6 +30,10 @@ export type ReportExclusions = {
   // Generic per-section curation for the GA4 breakdown tables
   // ('ga4Events', 'ga4LandingPages', 'ga4Devices', 'ga4Countries').
   dims: Record<string, SectionCuration>;
+  // Whole report sections hidden for THIS project only (SectionKey values) —
+  // applied to the on-screen report, every export and the public share link,
+  // without changing the shared template.
+  hiddenSections: string[];
 };
 
 export function emptySectionCuration(): SectionCuration {
@@ -48,6 +52,7 @@ export const EMPTY_EXCLUSIONS: ReportExclusions = {
     channels: { ...EMPTY_FILTER },
   },
   dims: {},
+  hiddenSections: [],
 };
 
 function normalizeFilter(raw: unknown): TabFilter {
@@ -90,6 +95,7 @@ export function normalizeExclusions(raw: unknown): ReportExclusions {
       channels: normalizeFilter(f.channels),
     },
     dims,
+    hiddenSections: pickKeys(obj.hiddenSections),
   };
 }
 

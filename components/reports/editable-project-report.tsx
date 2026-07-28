@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  Layers,
   Loader2,
   MousePointerClick,
   Pencil,
@@ -61,6 +62,7 @@ import {
   densityClass,
   kpiGridClass,
   limitFor,
+  SECTION_LABELS,
 } from "@/lib/templates";
 import { cn, formatNumber, formatPosition } from "@/lib/utils";
 import type { KeywordRow } from "@/lib/keywords";
@@ -231,6 +233,74 @@ function HiddenSectionStub({
   );
 }
 
+// Toolbar menu to hide/show whole sections for this project (report + exports
+// + share link), separate from the shared template layout.
+function SectionVisibilityMenu({
+  items,
+  onToggle,
+  onSave,
+  saving,
+}: {
+  items: { key: string; label: string; hidden: boolean }[];
+  onToggle: (key: string, hide: boolean) => void;
+  onSave: () => void;
+  saving: boolean;
+}) {
+  const hiddenCount = items.filter((i) => i.hidden).length;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Layers className="mr-1.5 h-4 w-4" />
+          Sections
+          {hiddenCount ? (
+            <span className="ml-1.5 rounded-full bg-rose-100 px-1.5 text-xs text-rose-700 dark:bg-rose-950/50 dark:text-rose-300">
+              {hiddenCount} off
+            </span>
+          ) : null}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64 space-y-2">
+        <p className="text-xs text-muted-foreground">
+          Untick a section to hide it from this report, its exports (PDF, CSV,
+          PPT, PNG) and the public share link.
+        </p>
+        <div className="max-h-[50vh] space-y-0.5 overflow-y-auto">
+          {items.map((i) => (
+            <label
+              key={i.key}
+              className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-muted/60"
+            >
+              <input
+                type="checkbox"
+                className="h-4 w-4 shrink-0 accent-primary"
+                checked={!i.hidden}
+                onChange={(e) => onToggle(i.key, !e.target.checked)}
+              />
+              <span className={i.hidden ? "text-muted-foreground line-through" : ""}>
+                {i.label}
+              </span>
+            </label>
+          ))}
+        </div>
+        <Button
+          size="sm"
+          className="w-full"
+          onClick={onSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-4 w-4" />
+          )}
+          Save
+        </Button>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function EditableProjectReport(props: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -356,7 +426,31 @@ export function EditableProjectReport(props: Props) {
   }
 
   const density = densityClass(config.layout.density);
-  const cfg = config;
+  // Per-project section visibility overlay: whole sections the user hid for
+  // this project (not the shared template). Applied to the report, exports and
+  // the share link — but NOT while editing the layout (there you manage the
+  // template itself and need to see every section).
+  const hiddenSectionSet = new Set(isLive ? exclusions.hiddenSections : []);
+  const cfg: ReportTemplateConfig =
+    editing || hiddenSectionSet.size === 0
+      ? config
+      : {
+          ...config,
+          sections: Object.fromEntries(
+            Object.entries(config.sections).map(([k, v]) => [
+              k,
+              v && !hiddenSectionSet.has(k),
+            ]),
+          ) as ReportTemplateConfig["sections"],
+        };
+  const toggleSectionHidden = (key: string, hide: boolean) => {
+    setExclusions((ex) => {
+      const set = new Set(ex.hiddenSections);
+      if (hide) set.add(key);
+      else set.delete(key);
+      return { ...ex, hiddenSections: Array.from(set) };
+    });
+  };
   const showAnyTable =
     cfg.sections.topQueries ||
     cfg.sections.topPages ||
@@ -500,7 +594,9 @@ export function EditableProjectReport(props: Props) {
       compare: props.compare,
       isStub: props.isStub,
       pdfFilename: props.pdfFilename,
-      config,
+      // Store the masked config so the snapshot/share link only shows the
+      // sections the user kept for this project.
+      config: cfg,
       template: props.template,
       overview: props.overview,
       prevOverview: props.prevOverview,
@@ -663,6 +759,18 @@ export function EditableProjectReport(props: Props) {
               />
               {props.mode !== "snapshot" ? (
                 <>
+                  <SectionVisibilityMenu
+                    items={(Object.keys(SECTION_LABELS) as SectionKey[])
+                      .filter((k) => config.sections[k])
+                      .map((k) => ({
+                        key: k,
+                        label: SECTION_LABELS[k],
+                        hidden: hiddenSectionSet.has(k),
+                      }))}
+                    onToggle={toggleSectionHidden}
+                    onSave={() => persistExclusions(exclusions)}
+                    saving={savingExclusions}
+                  />
                   <QuickShareButton
                     projectId={props.project.id}
                     defaultName={`${props.project.name} — ${props.rangeLabel}`}

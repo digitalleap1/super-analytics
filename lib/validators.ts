@@ -56,6 +56,7 @@ export const projectUpdateSchema = projectCreateSchema.partial().extend({
           }),
         )
         .optional(),
+      hiddenSections: z.array(z.string().max(60)).max(50).optional(),
     })
     .optional()
     .nullable(),
