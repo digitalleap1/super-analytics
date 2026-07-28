@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Search } from "lucide-react";
+import { EyeOff, Loader2, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -75,8 +75,8 @@ function useMatcher(mode: FilterMode, text: string) {
 }
 
 // A checklist of every fetched row, with a GSC-style Contains / Doesn't contain
-// / Regex filter and bulk "apply to matching" actions. Unchecking a row hides
-// it from the report and every export; selections persist per project.
+// / Regex filter. TICK A ROW TO HIDE IT from the report and every export.
+// (Everything is shown by default; ticking = remove.) Selections persist.
 export function RowCurationDialog({
   open,
   onOpenChange,
@@ -95,12 +95,12 @@ export function RowCurationDialog({
   const matcher = useMatcher(mode, text);
 
   // Clear the filter box each time the dialog opens so a stale regex doesn't
-  // silently hide rows the next time around.
+  // silently narrow the list the next time around.
   useEffect(() => {
     if (open) setText("");
   }, [open]);
 
-  const excluded = useMemo(
+  const hidden = useMemo(
     () => ({
       queries: new Set(exclusions.queries),
       pages: new Set(exclusions.pages),
@@ -109,25 +109,24 @@ export function RowCurationDialog({
     [exclusions],
   );
 
-  function toggle(kind: CurationTab, key: string, include: boolean) {
+  // hide=true adds the key to exclusions (row removed); hide=false restores it.
+  function setHidden(kind: CurationTab, key: string, hide: boolean) {
     const set = new Set(exclusions[kind]);
-    if (include) set.delete(key);
-    else set.add(key);
+    if (hide) set.add(key);
+    else set.delete(key);
     onChange({ ...exclusions, [kind]: Array.from(set) });
   }
 
-  // Bulk: include/exclude every key in `keys` at once (used by both the
-  // whole-list buttons and the "apply to matching" buttons).
-  function applyBulk(kind: CurationTab, keys: string[], include: boolean) {
+  function applyBulk(kind: CurationTab, keys: string[], hide: boolean) {
     const set = new Set(exclusions[kind]);
     for (const k of keys) {
-      if (include) set.delete(k);
-      else set.add(k);
+      if (hide) set.add(k);
+      else set.delete(k);
     }
     onChange({ ...exclusions, [kind]: Array.from(set) });
   }
 
-  const totalExcluded =
+  const totalHidden =
     exclusions.queries.length +
     exclusions.pages.length +
     exclusions.channels.length;
@@ -154,14 +153,14 @@ export function RowCurationDialog({
       (r) => matcher.test(label(r)) || matcher.test(keyOf(r)),
     );
     const matchedKeys = matched.map(keyOf);
-    const includedCount = allKeys.filter((k) => !excluded[kind].has(k)).length;
+    const hiddenCount = allKeys.filter((k) => hidden[kind].has(k)).length;
     const filtering = text.trim().length > 0;
 
     return (
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <span>
-            {includedCount} of {allKeys.length} included
+            {hiddenCount} of {allKeys.length} hidden
             {filtering ? ` · ${matched.length} match` : ""}
           </span>
           <div className="flex flex-wrap gap-2">
@@ -169,17 +168,17 @@ export function RowCurationDialog({
               <>
                 <button
                   type="button"
-                  className="rounded border px-1.5 py-0.5 hover:bg-muted hover:text-foreground"
-                  onClick={() => applyBulk(kind, matchedKeys, false)}
+                  className="rounded border px-1.5 py-0.5 font-medium hover:bg-muted hover:text-foreground"
+                  onClick={() => applyBulk(kind, matchedKeys, true)}
                 >
-                  Deselect {matched.length} matching
+                  Hide {matched.length} matching
                 </button>
                 <button
                   type="button"
                   className="rounded border px-1.5 py-0.5 hover:bg-muted hover:text-foreground"
-                  onClick={() => applyBulk(kind, matchedKeys, true)}
+                  onClick={() => applyBulk(kind, matchedKeys, false)}
                 >
-                  Select {matched.length} matching
+                  Show {matched.length} matching
                 </button>
                 <span aria-hidden>·</span>
               </>
@@ -189,7 +188,7 @@ export function RowCurationDialog({
               className="hover:text-foreground hover:underline"
               onClick={() => applyBulk(kind, allKeys, true)}
             >
-              Select all
+              Hide all
             </button>
             <span aria-hidden>·</span>
             <button
@@ -197,7 +196,7 @@ export function RowCurationDialog({
               className="hover:text-foreground hover:underline"
               onClick={() => applyBulk(kind, allKeys, false)}
             >
-              Deselect all
+              Show all
             </button>
           </div>
         </div>
@@ -209,20 +208,20 @@ export function RowCurationDialog({
           ) : (
             matched.map((r) => {
               const key = keyOf(r);
-              const include = !excluded[kind].has(key);
+              const isHidden = hidden[kind].has(key);
               return (
                 <label key={key} className={rowClass}>
                   <input
                     type="checkbox"
-                    className="h-4 w-4 shrink-0 accent-primary"
-                    checked={include}
-                    onChange={(e) => toggle(kind, key, e.target.checked)}
+                    className="h-4 w-4 shrink-0 accent-rose-600"
+                    checked={isHidden}
+                    onChange={(e) => setHidden(kind, key, e.target.checked)}
                   />
                   <span
                     className={
-                      include
-                        ? "min-w-0 flex-1 truncate"
-                        : "min-w-0 flex-1 truncate text-muted-foreground line-through"
+                      isHidden
+                        ? "min-w-0 flex-1 truncate text-muted-foreground line-through"
+                        : "min-w-0 flex-1 truncate"
                     }
                     title={label(r)}
                   >
@@ -244,12 +243,13 @@ export function RowCurationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Filter &amp; select rows</DialogTitle>
+          <DialogTitle>Hide rows from the report</DialogTitle>
           <DialogDescription>
-            Filter like Search Console (Contains / Doesn&apos;t contain / Regex),
-            then choose exactly which rows the client sees. Deselected rows are
-            removed from the report and every export (PDF, PPT, PNG, CSV, shared
-            link) and stay hidden next period.
+            Every row is included by default. <strong>Tick the rows you want to
+            hide</strong> from the client — they&apos;re removed from the report
+            and every export (PDF, PPT, PNG, CSV, shared link) and stay hidden
+            next period. Use the filter (Contains / Doesn&apos;t contain / Regex)
+            + &ldquo;Hide matching&rdquo; to remove many at once.
           </DialogDescription>
         </DialogHeader>
 
@@ -329,8 +329,9 @@ export function RowCurationDialog({
         </Tabs>
 
         <DialogFooter className="gap-2 sm:justify-between">
-          <p className="self-center text-xs text-muted-foreground">
-            {totalExcluded} row{totalExcluded === 1 ? "" : "s"} hidden
+          <p className="flex items-center gap-1.5 self-center text-xs text-muted-foreground">
+            <EyeOff className="h-3.5 w-3.5" />
+            {totalHidden} row{totalHidden === 1 ? "" : "s"} hidden from the report
           </p>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
@@ -344,7 +345,7 @@ export function RowCurationDialog({
               disabled={saving}
             >
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Save selections
+              Save &amp; apply
             </Button>
           </div>
         </DialogFooter>

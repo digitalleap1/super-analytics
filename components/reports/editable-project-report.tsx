@@ -631,9 +631,9 @@ export function EditableProjectReport(props: Props) {
                     onClick={() => openCurate("queries")}
                   >
                     <ListFilter className="mr-1.5 h-4 w-4" />
-                    Filter &amp; select rows
+                    Filter &amp; hide rows
                     {totalExcluded(exclusions) > 0 ? (
-                      <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 text-xs text-primary">
+                      <span className="ml-1.5 rounded-full bg-rose-100 px-1.5 text-xs text-rose-700 dark:bg-rose-950/50 dark:text-rose-300">
                         {totalExcluded(exclusions)} hidden
                       </span>
                     ) : null}

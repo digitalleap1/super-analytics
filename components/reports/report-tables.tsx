@@ -71,7 +71,7 @@ export function ReportTables({
     onCurate ? (
       <Button variant="outline" size="sm" onClick={() => onCurate(tab)}>
         <ListFilter className="mr-1.5 h-4 w-4" />
-        Filter &amp; select
+        Filter &amp; hide
       </Button>
     ) : null;
   // Build O(1) lookup maps for previous-period rows so each table cell can
