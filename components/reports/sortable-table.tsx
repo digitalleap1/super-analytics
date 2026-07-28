@@ -20,6 +20,8 @@ type Props<T> = {
   data: T[];
   pageSize?: number;
   emptyMessage?: string;
+  // Optional per-row class (e.g. to dim/strike hidden rows during curation).
+  rowClassName?: (row: T) => string | undefined;
 };
 
 export function SortableTable<T>({
@@ -27,6 +29,7 @@ export function SortableTable<T>({
   data,
   pageSize = 10,
   emptyMessage = "No rows",
+  rowClassName,
 }: Props<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -53,12 +56,16 @@ export function SortableTable<T>({
                 {hg.headers.map((h) => {
                   const sortDir = h.column.getIsSorted();
                   const canSort = h.column.getCanSort();
+                  const meta = h.column.columnDef.meta as
+                    | { thClassName?: string }
+                    | undefined;
                   return (
                     <th
                       key={h.id}
                       className={cn(
                         "px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground",
                         canSort && "cursor-pointer select-none",
+                        meta?.thClassName,
                       )}
                       onClick={
                         canSort
@@ -96,12 +103,23 @@ export function SortableTable<T>({
               </tr>
             ) : (
               rows.map((r) => (
-                <tr key={r.id} className="border-t">
-                  {r.getVisibleCells().map((c) => (
-                    <td key={c.id} className="px-3 py-2">
-                      {flexRender(c.column.columnDef.cell, c.getContext())}
-                    </td>
-                  ))}
+                <tr
+                  key={r.id}
+                  className={cn("border-t", rowClassName?.(r.original))}
+                >
+                  {r.getVisibleCells().map((c) => {
+                    const meta = c.column.columnDef.meta as
+                      | { tdClassName?: string }
+                      | undefined;
+                    return (
+                      <td
+                        key={c.id}
+                        className={cn("px-3 py-2", meta?.tdClassName)}
+                      >
+                        {flexRender(c.column.columnDef.cell, c.getContext())}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             )}

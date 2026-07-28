@@ -105,6 +105,11 @@ export async function exportElementToPpt(opts: ExportPptOptions): Promise<void> 
         useCORS: true,
         logging: false,
         windowWidth: section.scrollWidth,
+        // Keep interactive-only controls (filter bars, per-row hide buttons)
+        // out of the exported slide — same rule the PNG export uses.
+        ignoreElements: (el) =>
+          el instanceof HTMLElement &&
+          el.classList.contains("print:hidden"),
       });
     } catch {
       continue;

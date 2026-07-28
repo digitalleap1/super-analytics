@@ -19,6 +19,11 @@ export const projectCreateSchema = z.object({
 
 export type ProjectCreateInput = z.infer<typeof projectCreateSchema>;
 
+const reportFilterSchema = z.object({
+  mode: z.enum(["contains", "not_contains", "regex"]).default("contains"),
+  text: z.string().max(2000).default(""),
+});
+
 export const projectUpdateSchema = projectCreateSchema.partial().extend({
   gscSiteUrl: z.string().max(500).optional().nullable(),
   ga4PropertyId: z.string().max(50).optional().nullable(),
@@ -27,13 +32,21 @@ export const projectUpdateSchema = projectCreateSchema.partial().extend({
   // Structured tasks are stored as a JSON array, which costs more characters
   // than the old free text — give it headroom.
   otherTasks: z.string().max(30000).optional().nullable(),
-  // Deselected report rows (query/page/channel keys) to hide from the report
-  // and every export. Bounded to keep the JSON column sane.
+  // Row curation applied to the report + every export: per-table hidden row
+  // keys plus a per-table Contains/Regex filter. Bounded to keep the JSON
+  // column sane.
   reportExclusions: z
     .object({
       queries: z.array(z.string().max(2000)).max(2000).default([]),
       pages: z.array(z.string().max(2000)).max(2000).default([]),
       channels: z.array(z.string().max(2000)).max(500).default([]),
+      filters: z
+        .object({
+          queries: reportFilterSchema,
+          pages: reportFilterSchema,
+          channels: reportFilterSchema,
+        })
+        .optional(),
     })
     .optional()
     .nullable(),
