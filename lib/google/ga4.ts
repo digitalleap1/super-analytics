@@ -1,8 +1,15 @@
 import { google } from "googleapis";
 
 import { resolveGoogleAccessToken } from "./project-tokens";
-import { stubGa4Channels, stubGa4Overview, stubGa4Properties } from "./stub";
+import type { Ga4SectionDef } from "./ga4-sections";
+import {
+  stubGa4Breakdown,
+  stubGa4Channels,
+  stubGa4Overview,
+  stubGa4Properties,
+} from "./stub";
 import type {
+  Ga4BreakdownResult,
   Ga4ChannelsResult,
   Ga4Overview,
   Ga4PropertyListItem,
@@ -152,6 +159,56 @@ export async function getGa4Channels(opts: FetchOpts): Promise<Ga4ChannelsResult
       rows: stubGa4Channels(stubSeed, opts.from, opts.to),
       source: "stub",
     };
+  }
+}
+
+// Generic breakdown fetch for the Events / Landing pages / Devices / Countries
+// sections. Ordered by the first metric desc. Falls back to a stub (with a
+// parsed error) so a disabled API or missing property never blanks the report.
+export async function getGa4Breakdown(
+  opts: FetchOpts,
+  def: Ga4SectionDef,
+): Promise<Ga4BreakdownResult> {
+  const stubSeed = `${opts.projectId}:${def.id}`;
+  if (!opts.propertyId) {
+    return { rows: stubGa4Breakdown(stubSeed, def), source: "stub" };
+  }
+  const token = await resolveGoogleAccessToken({
+    projectId: opts.projectId,
+    userId: opts.userId,
+    service: "analytics",
+  });
+  if (!token) return { rows: stubGa4Breakdown(stubSeed, def), source: "stub" };
+
+  try {
+    const ga4 = client(token);
+    const res = await ga4.properties.runReport({
+      property: `properties/${opts.propertyId}`,
+      requestBody: {
+        dateRanges: [{ startDate: ymd(opts.from), endDate: ymd(opts.to) }],
+        dimensions: [{ name: def.dimension }],
+        metrics: def.metrics.map((m) => ({ name: m.name })),
+        orderBys: [
+          { metric: { metricName: def.metrics[0].name }, desc: true },
+        ],
+        limit: "50",
+      },
+    });
+    const rows = (res.data.rows ?? []).map((r) => {
+      const metrics: Record<string, number> = {};
+      def.metrics.forEach((m, i) => {
+        metrics[m.name] = Number(r.metricValues?.[i]?.value ?? 0);
+      });
+      return { key: r.dimensionValues?.[0]?.value ?? "(not set)", metrics };
+    });
+    return { rows, source: "live" };
+  } catch (err) {
+    const parsed = parseGa4Error(err);
+    console.error(
+      `[ga4] getGa4Breakdown(${def.id}) failed for ${opts.propertyId}:`,
+      err instanceof Error ? err.message : err,
+    );
+    return { rows: stubGa4Breakdown(stubSeed, def), source: "stub", error: parsed };
   }
 }
 

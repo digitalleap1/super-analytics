@@ -44,6 +44,13 @@ export type ReportPdfData = {
   topQueries?: GscQueryRow[];
   topPages?: GscPageRow[];
   channels?: Ga4ChannelRow[];
+  // GA4 breakdown tables (events / landing pages / devices / countries).
+  ga4Breakdowns?: Array<{
+    label: string;
+    keyHeader: string;
+    metrics: { name: string; header: string; format: "number" | "percent" }[];
+    rows: { key: string; metrics: Record<string, number> }[];
+  }>;
   keywords?: KeywordRow[];
   backlinks?: { row: BacklinkRow; categoryLabel: string }[];
   dailySeries?: DailyMetric[];
@@ -815,6 +822,28 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
     table(
       [col(0.36, "Channel"), col(0.18, "Sessions", "right"), col(0.18, "Users", "right"), col(0.16, "Engagement", "right"), col(0.12, "Events", "right")],
       data.channels.map((r) => [r.channel, num(r.sessions), num(r.totalUsers), pctFrac(r.engagementRate), num(r.eventCount)]),
+    );
+  }
+
+  // ── GA4 breakdown sections (events / landing pages / devices / countries) ──
+  for (const b of data.ga4Breakdowns ?? []) {
+    if (!b.rows.length) continue;
+    sectionHeading(b.label);
+    const keyW = 0.4;
+    const metricW = (1 - keyW) / Math.max(1, b.metrics.length);
+    table(
+      [
+        col(keyW, b.keyHeader),
+        ...b.metrics.map((m) => col(metricW, m.header, "right")),
+      ],
+      b.rows.map((r) => [
+        r.key,
+        ...b.metrics.map((m) =>
+          m.format === "percent"
+            ? pctFrac(r.metrics[m.name] ?? 0)
+            : num(r.metrics[m.name] ?? 0),
+        ),
+      ]),
     );
   }
 

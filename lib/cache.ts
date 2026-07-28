@@ -11,7 +11,11 @@ export type CacheType =
   | "gsc_queries"
   | "gsc_pages"
   | "ga4_overview"
-  | "ga4_channels";
+  | "ga4_channels"
+  | "ga4_events"
+  | "ga4_landing"
+  | "ga4_devices"
+  | "ga4_countries";
 
 export function buildCacheKey(
   type: CacheType,

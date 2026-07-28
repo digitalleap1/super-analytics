@@ -71,12 +71,17 @@ import {
 } from "@/lib/backlinks";
 import { BacklinksSection } from "@/components/backlinks/backlinks-section";
 import { SaveReportDialog } from "@/components/reports/save-report-dialog";
+import { Ga4BreakdownSection } from "@/components/reports/ga4-breakdown-section";
+import { GA4_SECTIONS } from "@/lib/google/ga4-sections";
 import {
+  applyDim,
   applyExclusions,
   EMPTY_EXCLUSIONS,
+  emptySectionCuration,
   normalizeExclusions,
   totalExcluded,
   type ReportExclusions,
+  type SectionCuration,
 } from "@/lib/report-exclusions";
 import { QuickShareButton } from "@/components/reports/quick-share-button";
 import { ReportLogoHeader } from "@/components/reports/report-logo-header";
@@ -86,12 +91,18 @@ import { OtherTasksSection } from "@/components/reports/other-tasks-section";
 import { QuickTemplateSwitcher } from "@/components/reports/quick-template-switcher";
 import { formatBulletValue, type ReportSummary } from "@/lib/report-summary";
 import type {
+  Ga4BreakdownRow,
   Ga4ChannelRow,
   Ga4Overview,
   GscOverview,
   GscPageRow,
   GscQueryRow,
 } from "@/lib/google/types";
+
+export type Ga4BreakdownData = {
+  rows: Ga4BreakdownRow[];
+  prevRows: Ga4BreakdownRow[] | null;
+};
 
 type Props = {
   project: {
@@ -141,6 +152,9 @@ type Props = {
   // Persisted per-project row curation (deselected queries/pages/channels).
   // Absent/read-only in snapshot & share views (already baked into the data).
   initialExclusions?: ReportExclusions;
+  // GA4 breakdown tables (events / landing pages / devices / countries),
+  // keyed by section id. Absent in older snapshots.
+  ga4Breakdowns?: Record<string, Ga4BreakdownData>;
   // List of workspace templates so the user can switch from the toolbar
   // without going to project settings.
   availableTemplates?: { id: string; name: string; isDefault: boolean }[];
@@ -282,6 +296,12 @@ export function EditableProjectReport(props: Props) {
       sections: { ...c.sections, [key]: value },
     }));
   }
+
+  // Per-section curation for the GA4 breakdown tables (dims map).
+  const getDim = (id: string): SectionCuration =>
+    exclusions.dims[id] ?? emptySectionCuration();
+  const setDim = (id: string, next: SectionCuration) =>
+    setExclusions((ex) => ({ ...ex, dims: { ...ex.dims, [id]: next } }));
   function setLayout<K extends keyof ReportTemplateConfig["layout"]>(
     key: K,
     value: ReportTemplateConfig["layout"][K],
@@ -492,6 +512,18 @@ export function EditableProjectReport(props: Props) {
       prevPages: props.prevPages ?? null,
       channels: vChannels,
       prevChannels: props.prevChannels ?? null,
+      ga4Breakdowns: props.ga4Breakdowns
+        ? Object.fromEntries(
+            GA4_SECTIONS.map((def) => {
+              const b = props.ga4Breakdowns?.[def.id];
+              if (!b) return [def.id, { rows: [], prevRows: null }];
+              const rows = isLive
+                ? applyDim(b.rows, (r) => r.key, exclusions.dims[def.id])
+                : b.rows;
+              return [def.id, { rows, prevRows: b.prevRows }];
+            }),
+          )
+        : undefined,
       keywords: props.keywords,
       backlinks: props.backlinks,
       backlinkMonthly: props.backlinkMonthly,
@@ -584,6 +616,24 @@ export function EditableProjectReport(props: Props) {
                   channels: cfg.sections.ga4Channels
                     ? vChannels.slice(0, limitFor(cfg, "ga4Channels"))
                     : undefined,
+                  ga4Breakdowns: GA4_SECTIONS.filter(
+                    (def) =>
+                      cfg.sections[def.sectionKey] &&
+                      props.ga4Breakdowns?.[def.id],
+                  ).map((def) => {
+                    const b = props.ga4Breakdowns![def.id];
+                    const rows = applyDim(
+                      b.rows,
+                      (r) => r.key,
+                      exclusions.dims[def.id],
+                    ).slice(0, limitFor(cfg, def.sectionKey as LimitedSection));
+                    return {
+                      label: def.label,
+                      keyHeader: def.keyHeader,
+                      metrics: def.metrics,
+                      rows,
+                    };
+                  }),
                   keywords: cfg.sections.keywords
                     ? props.keywords.slice(0, limitFor(cfg, "keywords"))
                     : undefined,
@@ -1057,6 +1107,48 @@ export function EditableProjectReport(props: Props) {
             }}
           />
         ) : null}
+
+        {/* GA4 breakdown sections: events, landing pages, devices, countries.
+            Each is its own section with its own filter/hide curation and
+            period comparison. */}
+        {GA4_SECTIONS.map((def) => {
+          const data = props.ga4Breakdowns?.[def.id];
+          const on = cfg.sections[def.sectionKey];
+          if (on && data) {
+            return (
+              <Ga4BreakdownSection
+                key={def.id}
+                def={def}
+                projectName={props.project.name}
+                rows={data.rows}
+                prevRows={data.prevRows}
+                limit={limitFor(cfg, def.sectionKey as LimitedSection)}
+                editing={editing}
+                onHide={() => setSection(def.sectionKey, false)}
+                curation={
+                  isLive
+                    ? {
+                        section: getDim(def.id),
+                        onChange: (next) => setDim(def.id, next),
+                        onSave: () => persistExclusions(exclusions),
+                        saving: savingExclusions,
+                      }
+                    : undefined
+                }
+              />
+            );
+          }
+          if (editing) {
+            return (
+              <HiddenSectionStub
+                key={def.id}
+                name={def.label}
+                onShow={() => setSection(def.sectionKey, true)}
+              />
+            );
+          }
+          return null;
+        })}
 
         {/* Backlinks (placed after the GSC/GA4 tables) */}
         {cfg.sections.backlinks ? (

@@ -76,6 +76,7 @@ export default async function PublicReportPage({
           prevPages={snapshot.prevPages ?? null}
           channels={snapshot.channels}
           prevChannels={snapshot.prevChannels ?? null}
+          ga4Breakdowns={snapshot.ga4Breakdowns}
           keywords={snapshot.keywords}
           backlinks={snapshot.backlinks}
           backlinkMonthly={snapshot.backlinkMonthly}

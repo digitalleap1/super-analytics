@@ -10,7 +10,8 @@ import {
   ymd,
 } from "@/lib/date-ranges";
 import { withCache } from "@/lib/cache";
-import { getGa4Channels, getGa4Overview } from "@/lib/google/ga4";
+import { getGa4Breakdown, getGa4Channels, getGa4Overview } from "@/lib/google/ga4";
+import { GA4_SECTIONS } from "@/lib/google/ga4-sections";
 import { getGscOverview, getGscPages, getGscQueries } from "@/lib/google/gsc";
 import { getKeywordSnapshot } from "@/lib/keywords";
 import {
@@ -216,6 +217,46 @@ export default async function ProjectPage({
     hasGa4,
   });
 
+  // GA4 breakdown sections (events, landing pages, devices, countries) —
+  // current + previous period, each cached like the other GA4 tables.
+  const breakdownOpts = (from: Date, to: Date) => ({
+    userId: user.id,
+    projectId: project.id,
+    propertyId: project.ga4PropertyId,
+    from,
+    to,
+  });
+  const [breakdownCurrent, breakdownPrev] = await Promise.all([
+    Promise.all(
+      GA4_SECTIONS.map((def) =>
+        withCache(project.id, def.cacheType, cacheKey("current"), () =>
+          getGa4Breakdown(breakdownOpts(range.from, range.to), def),
+        ),
+      ),
+    ),
+    prev
+      ? Promise.all(
+          GA4_SECTIONS.map((def) =>
+            withCache(
+              project.id,
+              def.cacheType,
+              { from: ymd(prev.from), to: ymd(prev.to), suffix: "prev" },
+              () => getGa4Breakdown(breakdownOpts(prev.from, prev.to), def),
+            ),
+          ),
+        )
+      : Promise.resolve(null),
+  ]);
+  const ga4Breakdowns = Object.fromEntries(
+    GA4_SECTIONS.map((def, i) => [
+      def.id,
+      {
+        rows: breakdownCurrent[i].rows,
+        prevRows: breakdownPrev ? breakdownPrev[i].rows : null,
+      },
+    ]),
+  );
+
   return (
     <EditableProjectReport
       project={{
@@ -254,6 +295,7 @@ export default async function ProjectPage({
       analysisNotes={project.analysisNotes}
       otherTasks={project.otherTasks}
       initialExclusions={normalizeExclusions(project.reportExclusions)}
+      ga4Breakdowns={ga4Breakdowns}
       availableTemplates={allTemplates}
       currentTemplateId={project.templateId}
     />

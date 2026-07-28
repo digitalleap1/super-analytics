@@ -14,6 +14,10 @@ import type {
 export type FilterMode = "contains" | "not_contains" | "regex";
 export type TabFilter = { mode: FilterMode; text: string };
 
+// Curation for one generic section (the GA4 breakdown tables): a filter + a
+// hidden-row list, same idea as the GSC tables but keyed by section id.
+export type SectionCuration = { hidden: string[]; filter: TabFilter };
+
 export type ReportExclusions = {
   queries: string[];
   pages: string[];
@@ -23,7 +27,14 @@ export type ReportExclusions = {
     pages: TabFilter;
     channels: TabFilter;
   };
+  // Generic per-section curation for the GA4 breakdown tables
+  // ('ga4Events', 'ga4LandingPages', 'ga4Devices', 'ga4Countries').
+  dims: Record<string, SectionCuration>;
 };
+
+export function emptySectionCuration(): SectionCuration {
+  return { hidden: [], filter: { mode: "contains", text: "" } };
+}
 
 const EMPTY_FILTER: TabFilter = { mode: "contains", text: "" };
 
@@ -36,6 +47,7 @@ export const EMPTY_EXCLUSIONS: ReportExclusions = {
     pages: { ...EMPTY_FILTER },
     channels: { ...EMPTY_FILTER },
   },
+  dims: {},
 };
 
 function normalizeFilter(raw: unknown): TabFilter {
@@ -62,6 +74,12 @@ export function normalizeExclusions(raw: unknown): ReportExclusions {
   };
   const obj = (raw ?? {}) as Record<string, unknown>;
   const f = (obj.filters ?? {}) as Record<string, unknown>;
+  const rawDims = (obj.dims ?? {}) as Record<string, unknown>;
+  const dims: Record<string, SectionCuration> = {};
+  for (const [id, v] of Object.entries(rawDims)) {
+    const o = (v ?? {}) as Record<string, unknown>;
+    dims[id] = { hidden: pickKeys(o.hidden), filter: normalizeFilter(o.filter) };
+  }
   return {
     queries: pickKeys(obj.queries),
     pages: pickKeys(obj.pages),
@@ -71,7 +89,20 @@ export function normalizeExclusions(raw: unknown): ReportExclusions {
       pages: normalizeFilter(f.pages),
       channels: normalizeFilter(f.channels),
     },
+    dims,
   };
+}
+
+// Filter + hide one generic section's rows (GA4 breakdown tables).
+export function applyDim<T>(
+  rows: T[],
+  keyOf: (r: T) => string,
+  sc: SectionCuration | undefined,
+): T[] {
+  if (!sc) return rows;
+  const hidden = new Set(sc.hidden);
+  const match = matcherFor(sc.filter);
+  return rows.filter((r) => match(keyOf(r)) && !hidden.has(keyOf(r)));
 }
 
 export function totalExcluded(ex: ReportExclusions): number {

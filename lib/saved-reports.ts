@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 
 import type { ReportTemplateConfig } from "@/lib/templates";
 import type {
+  Ga4BreakdownRow,
   Ga4ChannelRow,
   Ga4Overview,
   GscOverview,
@@ -44,6 +45,12 @@ export type SavedReportSnapshot = {
   summary?: ReportSummary;
   analysisNotes?: string | null;
   otherTasks?: string | null;
+  // GA4 breakdown tables (events / landing pages / devices / countries),
+  // curated at save time. Absent in snapshots taken before this shipped.
+  ga4Breakdowns?: Record<
+    string,
+    { rows: Ga4BreakdownRow[]; prevRows: Ga4BreakdownRow[] | null }
+  >;
 };
 
 export function parseSnapshot(raw: string): SavedReportSnapshot | null {

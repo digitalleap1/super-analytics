@@ -11,6 +11,10 @@ export type SectionKey =
   | "topQueries"
   | "topPages"
   | "ga4Channels"
+  | "ga4Events"
+  | "ga4LandingPages"
+  | "ga4Devices"
+  | "ga4Countries"
   | "otherTasks";
 
 export type Density = "compact" | "comfortable" | "spacious";
@@ -24,6 +28,10 @@ export type LimitedSection =
   | "topQueries"
   | "topPages"
   | "ga4Channels"
+  | "ga4Events"
+  | "ga4LandingPages"
+  | "ga4Devices"
+  | "ga4Countries"
   | "keywords"
   | "backlinks";
 
@@ -56,6 +64,10 @@ export const DEFAULT_TEMPLATE_CONFIG: ReportTemplateConfig = {
     topQueries: true,
     topPages: true,
     ga4Channels: true,
+    ga4Events: true,
+    ga4LandingPages: true,
+    ga4Devices: true,
+    ga4Countries: true,
     otherTasks: true,
   },
   layout: {
@@ -80,6 +92,10 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   topQueries: "Top queries table",
   topPages: "Top pages table",
   ga4Channels: "GA4 channels table",
+  ga4Events: "GA4 events table",
+  ga4LandingPages: "GA4 landing pages table",
+  ga4Devices: "GA4 devices table",
+  ga4Countries: "GA4 countries table",
   otherTasks: "Other tasks (free-text)",
 };
 
@@ -87,6 +103,10 @@ export const LIMITED_SECTION_LABELS: Record<LimitedSection, string> = {
   topQueries: "Top queries",
   topPages: "Top pages",
   ga4Channels: "GA4 channels",
+  ga4Events: "GA4 events",
+  ga4LandingPages: "GA4 landing pages",
+  ga4Devices: "GA4 devices",
+  ga4Countries: "GA4 countries",
   keywords: "Keywords",
   backlinks: "Backlinks",
 };

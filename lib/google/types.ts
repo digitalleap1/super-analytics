@@ -81,6 +81,20 @@ export type Ga4ChannelsResult = {
   source: "live" | "stub";
 };
 
+// Generic GA4 breakdown row for the Events / Landing pages / Devices /
+// Countries tables. `key` is the dimension value (also the display label);
+// `metrics` holds the requested metric values by name.
+export type Ga4BreakdownRow = {
+  key: string;
+  metrics: Record<string, number>;
+};
+
+export type Ga4BreakdownResult = {
+  rows: Ga4BreakdownRow[];
+  source: "live" | "stub";
+  error?: string;
+};
+
 export type GscSiteListItem = {
   siteUrl: string;
   permissionLevel: string;

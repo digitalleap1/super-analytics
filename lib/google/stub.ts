@@ -2,8 +2,10 @@
 // connection. Same input -> same output, so charts/tables look stable across
 // reloads. Numbers are believable (smooth trend + small noise), not random.
 
+import type { Ga4SectionDef } from "./ga4-sections";
 import type {
   DailyMetric,
+  Ga4BreakdownRow,
   Ga4ChannelRow,
   Ga4Overview,
   Ga4PropertyListItem,
@@ -221,6 +223,59 @@ export function stubGa4Channels(seed: string, from: Date, to: Date): Ga4ChannelR
       engagementRate,
       eventCount,
     };
+  });
+}
+
+const STUB_BREAKDOWN_KEYS: Record<string, string[]> = {
+  ga4Events: [
+    "page_view",
+    "session_start",
+    "user_engagement",
+    "scroll",
+    "click",
+    "form_start",
+    "form_submit",
+    "file_download",
+  ],
+  ga4LandingPages: [
+    "/",
+    "/services",
+    "/about",
+    "/contact",
+    "/pricing",
+    "/blog/getting-started",
+    "/blog/case-study",
+  ],
+  ga4Devices: ["mobile", "desktop", "tablet"],
+  ga4Countries: [
+    "United States",
+    "United Kingdom",
+    "Canada",
+    "Australia",
+    "India",
+    "Germany",
+  ],
+};
+
+export function stubGa4Breakdown(
+  seed: string,
+  def: Ga4SectionDef,
+): Ga4BreakdownRow[] {
+  const rng = seededRng(hashString(`${seed}:${def.id}`));
+  const keys = STUB_BREAKDOWN_KEYS[def.id] ?? ["(sample a)", "(sample b)", "(sample c)"];
+  const base = 1200;
+  return keys.map((key, i) => {
+    const scale = Math.max(1, base * (1 - i * 0.13) * (0.7 + rng() * 0.5));
+    const metrics: Record<string, number> = {};
+    for (const m of def.metrics) {
+      if (m.format === "percent") metrics[m.name] = 0.35 + rng() * 0.5;
+      else if (m.name === "totalUsers")
+        metrics[m.name] = Math.round(scale * (0.6 + rng() * 0.3));
+      else if (m.name === "eventCount")
+        metrics[m.name] = Math.round(scale * (3 + rng() * 5));
+      else metrics[m.name] = Math.round(scale);
+    }
+    return { key, metrics };
   });
 }
 

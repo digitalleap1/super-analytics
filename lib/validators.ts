@@ -47,6 +47,15 @@ export const projectUpdateSchema = projectCreateSchema.partial().extend({
           channels: reportFilterSchema,
         })
         .optional(),
+      dims: z
+        .record(
+          z.string(),
+          z.object({
+            hidden: z.array(z.string().max(2000)).max(2000).default([]),
+            filter: reportFilterSchema,
+          }),
+        )
+        .optional(),
     })
     .optional()
     .nullable(),
