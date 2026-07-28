@@ -106,6 +106,21 @@ export type Ga4PropertyListItem = {
   accountDisplayName: string;
 };
 
+// Google Business Profile (Maps/Search listing).
+export type GmbLocationItem = {
+  accountId: string; // "accounts/123"
+  locationId: string; // "locations/456"
+  title: string;
+  address: string;
+};
+
+export type GmbPerformance = {
+  // Totals over the selected range, keyed by GMB_METRICS[].key.
+  totals: Record<string, number>;
+  source: "live" | "stub";
+  error?: string;
+};
+
 export function isDemoMode(): boolean {
   return !process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET;
 }

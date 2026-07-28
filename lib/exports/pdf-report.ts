@@ -54,6 +54,8 @@ export type ReportPdfData = {
     metrics: { name: string; header: string; format: "number" | "percent" }[];
     rows: { key: string; metrics: Record<string, number> }[];
   }>;
+  // Google Business Profile performance metrics.
+  gmb?: { label: string; value: number }[];
   keywords?: KeywordRow[];
   backlinks?: { row: BacklinkRow; categoryLabel: string }[];
   dailySeries?: DailyMetric[];
@@ -847,6 +849,15 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
             : num(r.metrics[m.name] ?? 0),
         ),
       ]),
+    );
+  }
+
+  // ── Google Business Profile ──
+  if (data.gmb?.length) {
+    sectionHeading("Google Business Profile");
+    table(
+      [col(0.6, "Metric"), col(0.4, "Value", "right")],
+      data.gmb.map((g) => [g.label, num(g.value)]),
     );
   }
 

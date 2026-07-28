@@ -109,6 +109,10 @@ model Project {
   logoUrl        String?
   gscSiteUrl     String?
   ga4PropertyId  String?
+  // Google Business Profile: the selected location (and its parent account),
+  // connected via a separate business_profile ProjectAccount.
+  gmbAccountId   String?
+  gmbLocationId  String?
   analysisNotes  String?
   otherTasks     String?
   // Per-project row curation: query/page/channel keys to omit from the report

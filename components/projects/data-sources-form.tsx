@@ -16,6 +16,12 @@ type Ga4Property = {
   displayName: string;
   accountDisplayName: string;
 };
+type GmbLocation = {
+  accountId: string;
+  locationId: string;
+  title: string;
+  address: string;
+};
 
 const NONE = "__none__";
 
@@ -24,11 +30,14 @@ type Props = {
   initial: {
     gscSiteUrl: string | null;
     ga4PropertyId: string | null;
+    gmbLocationId?: string | null;
   };
   // Connected account emails per service (from project settings). When the two
   // differ, GSC and GA4 are saved independently with two buttons.
   gscEmail?: string | null;
   ga4Email?: string | null;
+  gmbEmail?: string | null;
+  gmbConnected?: boolean;
 };
 
 export function DataSourcesForm({
@@ -36,10 +45,13 @@ export function DataSourcesForm({
   initial,
   gscEmail = null,
   ga4Email = null,
+  gmbEmail = null,
+  gmbConnected = false,
 }: Props) {
   const router = useRouter();
   const [sites, setSites] = useState<GscSite[] | null>(null);
   const [properties, setProperties] = useState<Ga4Property[] | null>(null);
+  const [gmbLocations, setGmbLocations] = useState<GmbLocation[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   // Per-source status so we can surface clear messages when one works and
   // the other doesn't (the common case is GSC fine + GA4 Admin API disabled).
@@ -51,6 +63,9 @@ export function DataSourcesForm({
   const [gscSiteUrl, setGscSiteUrl] = useState(initial.gscSiteUrl ?? NONE);
   const [ga4PropertyId, setGa4PropertyId] = useState(
     initial.ga4PropertyId ?? NONE,
+  );
+  const [gmbLocationId, setGmbLocationId] = useState(
+    initial.gmbLocationId ?? NONE,
   );
 
   const [isPending, startTransition] = useTransition();
@@ -93,10 +108,35 @@ export function DataSourcesForm({
     };
   }, [projectId]);
 
+  // Load Business Profile locations only when GBP is connected for this project.
+  useEffect(() => {
+    if (!gmbConnected) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/projects/${projectId}/integrations/gmb-locations`,
+        );
+        if (!res.ok) return;
+        const { locations } = (await res.json()) as {
+          locations: GmbLocation[];
+        };
+        if (!cancelled) setGmbLocations(locations);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, gmbConnected]);
+
   const gscValue = gscSiteUrl === NONE ? null : gscSiteUrl;
   const ga4Value = ga4PropertyId === NONE ? null : ga4PropertyId;
+  const gmbValue = gmbLocationId === NONE ? null : gmbLocationId;
   const gscDirty = gscValue !== initial.gscSiteUrl;
   const ga4Dirty = ga4Value !== initial.ga4PropertyId;
+  const gmbDirty = gmbValue !== (initial.gmbLocationId ?? null);
   const isDirty = gscDirty || ga4Dirty;
 
   // GSC and GA4 live under different Google accounts → save each separately.
@@ -126,6 +166,25 @@ export function DataSourcesForm({
   const saveGsc = () =>
     patch({ gscSiteUrl: gscValue }, "Search Console site saved");
   const saveGa4 = () => patch({ ga4PropertyId: ga4Value }, "GA4 property saved");
+  const saveGmb = () => {
+    const acct =
+      (gmbLocations ?? []).find((l) => l.locationId === gmbValue)?.accountId ??
+      null;
+    patch(
+      { gmbLocationId: gmbValue, gmbAccountId: acct },
+      "Business Profile location saved",
+    );
+  };
+
+  const gmbOptions = useMemo(
+    () =>
+      (gmbLocations ?? []).map((l) => ({
+        value: l.locationId,
+        label: l.title,
+        helper: l.address,
+      })),
+    [gmbLocations],
+  );
 
   const siteOptions = useMemo(
     () =>
@@ -213,6 +272,33 @@ export function DataSourcesForm({
           )}
         </div>
       </div>
+      {gmbConnected ? (
+        <div className="max-w-md space-y-2">
+          <Label>
+            Business Profile location
+            {gmbEmail ? (
+              <span className="ml-1 font-normal text-muted-foreground">
+                · {gmbEmail}
+              </span>
+            ) : null}
+          </Label>
+          <SearchableSelect
+            value={gmbLocationId}
+            onChange={setGmbLocationId}
+            options={gmbOptions}
+            loading={gmbLocations === null}
+            placeholder="Select a location"
+            emptyMessage="No locations found for this account"
+            noneOption={{ value: NONE, label: "Not connected" }}
+          />
+          <div>
+            <Button onClick={saveGmb} disabled={!gmbDirty || isPending}>
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Save Business Profile
+            </Button>
+          </div>
+        </div>
+      ) : null}
       {differentAccounts ? (
         <div className="flex flex-wrap gap-2">
           <Button onClick={saveGsc} disabled={!gscDirty || isPending}>

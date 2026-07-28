@@ -22,7 +22,9 @@ export async function GET(
       ? "search_console"
       : raw === "ga4" || raw === "analytics"
         ? "analytics"
-        : "all";
+        : raw === "gmb" || raw === "business_profile"
+          ? "business_profile"
+          : "all";
 
   const url = buildProjectAuthorizeUrl(project.id, service);
   if (!url) {

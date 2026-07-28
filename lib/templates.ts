@@ -15,6 +15,7 @@ export type SectionKey =
   | "ga4LandingPages"
   | "ga4Devices"
   | "ga4Countries"
+  | "gmb"
   | "otherTasks";
 
 export type Density = "compact" | "comfortable" | "spacious";
@@ -68,6 +69,7 @@ export const DEFAULT_TEMPLATE_CONFIG: ReportTemplateConfig = {
     ga4LandingPages: true,
     ga4Devices: true,
     ga4Countries: true,
+    gmb: true,
     otherTasks: true,
   },
   layout: {
@@ -96,6 +98,7 @@ export const SECTION_LABELS: Record<SectionKey, string> = {
   ga4LandingPages: "GA4 landing pages table",
   ga4Devices: "GA4 devices table",
   ga4Countries: "GA4 countries table",
+  gmb: "Google Business Profile",
   otherTasks: "Other tasks (free-text)",
 };
 

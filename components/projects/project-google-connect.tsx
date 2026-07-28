@@ -12,13 +12,14 @@ export type GoogleConn = {
   email: string | null;
   connectedAt: string;
   // which stored account backs this service: a dedicated one or a shared "all".
-  via: "all" | "search_console" | "analytics";
+  via: "all" | "search_console" | "analytics" | "business_profile";
 } | null;
 
 type Props = {
   projectId: string;
   gsc: GoogleConn;
   ga4: GoogleConn;
+  gmb: GoogleConn;
   canManage: boolean;
 };
 
@@ -26,6 +27,7 @@ const viaToParam = {
   all: "all",
   search_console: "gsc",
   analytics: "ga4",
+  business_profile: "gmb",
 } as const;
 
 function ServiceRow({
@@ -40,7 +42,7 @@ function ServiceRow({
   label: string;
   hint: string;
   conn: GoogleConn;
-  connectParam: "gsc" | "ga4";
+  connectParam: "gsc" | "ga4" | "gmb";
   canManage: boolean;
 }) {
   const router = useRouter();
@@ -132,6 +134,7 @@ export function ProjectGoogleConnect({
   projectId,
   gsc,
   ga4,
+  gmb,
   canManage,
 }: Props) {
   return (
@@ -161,6 +164,14 @@ export function ProjectGoogleConnect({
         hint="Not connected — sign in with the account that has GA4 access."
         conn={ga4}
         connectParam="ga4"
+        canManage={canManage}
+      />
+      <ServiceRow
+        projectId={projectId}
+        label="Google Business Profile"
+        hint="Not connected — sign in with the account that manages the Business Profile (Maps/Search listing)."
+        conn={gmb}
+        connectParam="gmb"
         canManage={canManage}
       />
 

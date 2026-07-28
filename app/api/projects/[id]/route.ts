@@ -50,6 +50,12 @@ export async function PATCH(
       ...(parsed.data.ga4PropertyId !== undefined && {
         ga4PropertyId: parsed.data.ga4PropertyId,
       }),
+      ...(parsed.data.gmbAccountId !== undefined && {
+        gmbAccountId: parsed.data.gmbAccountId,
+      }),
+      ...(parsed.data.gmbLocationId !== undefined && {
+        gmbLocationId: parsed.data.gmbLocationId,
+      }),
       ...(parsed.data.templateId !== undefined && {
         templateId: parsed.data.templateId,
       }),
@@ -71,7 +77,8 @@ export async function PATCH(
   // refetches against the new site/property instead of showing stale data.
   const connectionChanged =
     parsed.data.gscSiteUrl !== undefined ||
-    parsed.data.ga4PropertyId !== undefined;
+    parsed.data.ga4PropertyId !== undefined ||
+    parsed.data.gmbLocationId !== undefined;
   if (connectionChanged) {
     await clearProjectCache(project.id);
   }

@@ -27,6 +27,8 @@ const reportFilterSchema = z.object({
 export const projectUpdateSchema = projectCreateSchema.partial().extend({
   gscSiteUrl: z.string().max(500).optional().nullable(),
   ga4PropertyId: z.string().max(50).optional().nullable(),
+  gmbAccountId: z.string().max(120).optional().nullable(),
+  gmbLocationId: z.string().max(120).optional().nullable(),
   templateId: z.string().optional().nullable(),
   analysisNotes: z.string().max(10000).optional().nullable(),
   // Structured tasks are stored as a JSON array, which costs more characters

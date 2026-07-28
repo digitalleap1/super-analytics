@@ -10,11 +10,19 @@ const USERINFO_ENDPOINT = "https://www.googleapis.com/oauth2/v2/userinfo";
 // A project can connect Google once for both services ("all"), or use separate
 // accounts when a client's Search Console and Analytics live under different
 // logins.
-export type GoogleService = "all" | "search_console" | "analytics";
+export type GoogleService =
+  | "all"
+  | "search_console"
+  | "analytics"
+  | "business_profile";
 
 const BASE_SCOPES = ["openid", "email", "profile"];
 const GSC_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
 const GA4_SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
+// Google Business Profile (Maps/Search listing). Note: the Business Profile
+// APIs must be enabled AND allow-listed for the Cloud project before live
+// data flows; until then calls 403 and the UI falls back to sample data.
+const GBP_SCOPE = "https://www.googleapis.com/auth/business.manage";
 
 export function scopesFor(service: GoogleService): string {
   const extra =
@@ -22,7 +30,11 @@ export function scopesFor(service: GoogleService): string {
       ? [GSC_SCOPE]
       : service === "analytics"
         ? [GA4_SCOPE]
-        : [GSC_SCOPE, GA4_SCOPE];
+        : service === "business_profile"
+          ? [GBP_SCOPE]
+          : // "all" = Search Console + Analytics on one account (not GBP, which
+            // uses a different scope and is always connected separately).
+            [GSC_SCOPE, GA4_SCOPE];
   return [...BASE_SCOPES, ...extra].join(" ");
 }
 
@@ -63,7 +75,9 @@ export function verifyProjectState(
     const [projectId, service] = payload.split(".");
     if (!projectId) return null;
     const svc: GoogleService =
-      service === "search_console" || service === "analytics"
+      service === "search_console" ||
+      service === "analytics" ||
+      service === "business_profile"
         ? service
         : "all";
     return { projectId, service: svc };
@@ -147,10 +161,15 @@ export async function fetchGoogleUserEmail(
 // falling back to an "all" account that covers both. Refreshes if expired.
 export async function getValidProjectGoogleAccessToken(
   projectId: string,
-  service: "search_console" | "analytics",
+  service: "search_console" | "analytics" | "business_profile",
 ): Promise<string | null> {
+  // The shared "all" account only carries Search Console + Analytics scopes, so
+  // Business Profile must use a dedicated business_profile account — never the
+  // "all" fallback (which would return a token without the GBP scope).
+  const services =
+    service === "business_profile" ? [service] : [service, "all"];
   const accounts = await prisma.projectAccount.findMany({
-    where: { projectId, service: { in: [service, "all"] } },
+    where: { projectId, service: { in: services } },
   });
   const account =
     accounts.find((a) => a.service === service) ??
@@ -220,7 +239,7 @@ export async function getValidProjectGoogleAccessToken(
 export async function resolveGoogleAccessToken(opts: {
   projectId: string | null;
   userId: string | null;
-  service: "search_console" | "analytics";
+  service: "search_console" | "analytics" | "business_profile";
 }): Promise<string | null> {
   if (opts.projectId) {
     const tok = await getValidProjectGoogleAccessToken(

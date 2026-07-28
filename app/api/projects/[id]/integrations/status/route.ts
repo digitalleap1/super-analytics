@@ -21,16 +21,25 @@ export async function GET(
   });
 
   // A dedicated per-service account wins over a shared "all" account — same
-  // resolution the settings page uses.
-  const resolveConn = (service: "search_console" | "analytics") => {
+  // resolution the settings page uses. Business Profile is always its own
+  // account (different scope), never the "all" fallback.
+  const resolveConn = (
+    service: "search_console" | "analytics" | "business_profile",
+  ) => {
     const account =
       accounts.find((a) => a.service === service) ??
-      accounts.find((a) => a.service === "all");
+      (service === "business_profile"
+        ? undefined
+        : accounts.find((a) => a.service === "all"));
     return account
       ? {
           email: account.email,
           connectedAt: account.connectedAt.toISOString().slice(0, 10),
-          via: account.service as "all" | "search_console" | "analytics",
+          via: account.service as
+            | "all"
+            | "search_console"
+            | "analytics"
+            | "business_profile",
         }
       : null;
   };
@@ -38,7 +47,9 @@ export async function GET(
   return NextResponse.json({
     gsc: resolveConn("search_console"),
     ga4: resolveConn("analytics"),
+    gmb: resolveConn("business_profile"),
     gscSiteUrl: project.gscSiteUrl,
     ga4PropertyId: project.ga4PropertyId,
+    gmbLocationId: project.gmbLocationId,
   });
 }

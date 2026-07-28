@@ -74,7 +74,9 @@ import {
 import { BacklinksSection } from "@/components/backlinks/backlinks-section";
 import { SaveReportDialog } from "@/components/reports/save-report-dialog";
 import { Ga4BreakdownSection } from "@/components/reports/ga4-breakdown-section";
+import { GmbSection } from "@/components/reports/gmb-section";
 import { GA4_SECTIONS } from "@/lib/google/ga4-sections";
+import { GMB_METRICS } from "@/lib/google/gmb-metrics";
 import {
   applyDim,
   applyExclusions,
@@ -96,6 +98,7 @@ import type {
   Ga4BreakdownRow,
   Ga4ChannelRow,
   Ga4Overview,
+  GmbPerformance,
   GscOverview,
   GscPageRow,
   GscQueryRow,
@@ -157,6 +160,11 @@ type Props = {
   // GA4 breakdown tables (events / landing pages / devices / countries),
   // keyed by section id. Absent in older snapshots.
   ga4Breakdowns?: Record<string, Ga4BreakdownData>;
+  // Google Business Profile performance (current + previous). Absent in older
+  // snapshots; hasGmb=false when no location is connected for the project.
+  gmbPerformance?: GmbPerformance;
+  prevGmb?: GmbPerformance | null;
+  hasGmb?: boolean;
   // List of workspace templates so the user can switch from the toolbar
   // without going to project settings.
   availableTemplates?: { id: string; name: string; isDefault: boolean }[];
@@ -620,6 +628,9 @@ export function EditableProjectReport(props: Props) {
             }),
           )
         : undefined,
+      gmbPerformance: props.gmbPerformance,
+      prevGmb: props.prevGmb ?? null,
+      hasGmb: props.hasGmb ?? false,
       keywords: props.keywords,
       backlinks: props.backlinks,
       backlinkMonthly: props.backlinkMonthly,
@@ -730,6 +741,13 @@ export function EditableProjectReport(props: Props) {
                       rows,
                     };
                   }),
+                  gmb:
+                    cfg.sections.gmb && props.hasGmb && props.gmbPerformance
+                      ? GMB_METRICS.map((m) => ({
+                          label: m.label,
+                          value: props.gmbPerformance!.totals[m.key] ?? 0,
+                        }))
+                      : undefined,
                   keywords: cfg.sections.keywords
                     ? props.keywords.slice(0, limitFor(cfg, "keywords"))
                     : undefined,
@@ -1257,6 +1275,24 @@ export function EditableProjectReport(props: Props) {
           }
           return null;
         })}
+
+        {/* Google Business Profile section. Shown when its section is enabled
+            and either the project connected a location or we're editing (so it
+            can be toggled and previewed). */}
+        {cfg.sections.gmb && props.gmbPerformance && (props.hasGmb || editing) ? (
+          <GmbSection
+            performance={props.gmbPerformance}
+            prev={props.prevGmb}
+            connected={!!props.hasGmb}
+            editing={editing}
+            onHide={() => setSection("gmb", false)}
+          />
+        ) : editing && cfg.sections.gmb === false ? (
+          <HiddenSectionStub
+            name={SECTION_LABELS.gmb}
+            onShow={() => setSection("gmb", true)}
+          />
+        ) : null}
 
         {/* Backlinks (placed after the GSC/GA4 tables) */}
         {cfg.sections.backlinks ? (

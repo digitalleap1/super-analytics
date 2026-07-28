@@ -11,16 +11,18 @@ export async function POST(
   const { project, response } = await getApiProject(params.id);
   if (!project) return response;
 
-  // ?service=gsc|ga4|all disconnects just that connection; no param = all.
+  // ?service=gsc|ga4|gmb|all disconnects just that connection; no param = all.
   const raw = new URL(req.url).searchParams.get("service");
   const service =
     raw === "gsc" || raw === "search_console"
       ? "search_console"
       : raw === "ga4" || raw === "analytics"
         ? "analytics"
-        : raw === "all"
-          ? "all"
-          : null;
+        : raw === "gmb" || raw === "business_profile"
+          ? "business_profile"
+          : raw === "all"
+            ? "all"
+            : null;
 
   await prisma.projectAccount.deleteMany({
     where: { projectId: project.id, ...(service ? { service } : {}) },

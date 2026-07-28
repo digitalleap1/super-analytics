@@ -5,6 +5,7 @@ import type {
   Ga4BreakdownRow,
   Ga4ChannelRow,
   Ga4Overview,
+  GmbPerformance,
   GscOverview,
   GscPageRow,
   GscQueryRow,
@@ -51,6 +52,10 @@ export type SavedReportSnapshot = {
     string,
     { rows: Ga4BreakdownRow[]; prevRows: Ga4BreakdownRow[] | null }
   >;
+  // Google Business Profile performance, frozen at save time.
+  gmbPerformance?: GmbPerformance;
+  prevGmb?: GmbPerformance | null;
+  hasGmb?: boolean;
 };
 
 export function parseSnapshot(raw: string): SavedReportSnapshot | null {

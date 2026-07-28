@@ -12,6 +12,7 @@ import {
 import { withCache } from "@/lib/cache";
 import { getGa4Breakdown, getGa4Channels, getGa4Overview } from "@/lib/google/ga4";
 import { GA4_SECTIONS } from "@/lib/google/ga4-sections";
+import { getGmbPerformance } from "@/lib/google/gmb";
 import { getGscOverview, getGscPages, getGscQueries } from "@/lib/google/gsc";
 import { getKeywordSnapshot } from "@/lib/keywords";
 import {
@@ -257,6 +258,35 @@ export default async function ProjectPage({
     ]),
   );
 
+  // Google Business Profile performance (current + previous), cached like GA4.
+  const hasGmb = !!project.gmbLocationId;
+  const [gmbPerformance, prevGmb] = await Promise.all([
+    withCache(project.id, "gmb_performance", cacheKey("current"), () =>
+      getGmbPerformance({
+        userId: user.id,
+        projectId: project.id,
+        locationId: project.gmbLocationId,
+        from: range.from,
+        to: range.to,
+      }),
+    ),
+    prev
+      ? withCache(
+          project.id,
+          "gmb_performance",
+          { from: ymd(prev.from), to: ymd(prev.to), suffix: "prev" },
+          () =>
+            getGmbPerformance({
+              userId: user.id,
+              projectId: project.id,
+              locationId: project.gmbLocationId,
+              from: prev.from,
+              to: prev.to,
+            }),
+        )
+      : Promise.resolve(null),
+  ]);
+
   return (
     <EditableProjectReport
       project={{
@@ -296,6 +326,9 @@ export default async function ProjectPage({
       otherTasks={project.otherTasks}
       initialExclusions={normalizeExclusions(project.reportExclusions)}
       ga4Breakdowns={ga4Breakdowns}
+      gmbPerformance={gmbPerformance}
+      prevGmb={prevGmb}
+      hasGmb={hasGmb}
       availableTemplates={allTemplates}
       currentTemplateId={project.templateId}
     />

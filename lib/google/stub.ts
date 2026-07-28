@@ -9,6 +9,8 @@ import type {
   Ga4ChannelRow,
   Ga4Overview,
   Ga4PropertyListItem,
+  GmbLocationItem,
+  GmbPerformance,
   GscOverview,
   GscPageRow,
   GscQueryRow,
@@ -277,6 +279,34 @@ export function stubGa4Breakdown(
     }
     return { key, metrics };
   });
+}
+
+export function stubGmbLocations(seed: string): GmbLocationItem[] {
+  const rng = seededRng(hashString(`${seed}:gmbloc`));
+  const names = ["Downtown Studio", "Main Street Clinic", "Uptown Branch"];
+  return names.map((title, i) => ({
+    accountId: "accounts/000000000000",
+    locationId: `locations/${1000000 + Math.floor(rng() * 8999999)}`,
+    title: `${title} (sample)`,
+    address: `${100 + i * 40} Example Ave, Sampletown`,
+  }));
+}
+
+export function stubGmbPerformance(seed: string): GmbPerformance {
+  const rng = seededRng(hashString(`${seed}:gmbperf`));
+  const r = (base: number) => Math.round(base * (0.7 + rng() * 0.6));
+  return {
+    totals: {
+      impressionsSearch: r(4200),
+      impressionsMaps: r(2600),
+      calls: r(48),
+      websiteClicks: r(160),
+      directions: r(120),
+      conversations: r(14),
+      bookings: r(6),
+    },
+    source: "stub",
+  };
 }
 
 export function stubKeywordDaily(

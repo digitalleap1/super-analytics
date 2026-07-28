@@ -40,21 +40,31 @@ export default async function ProjectSettingsPage({
     }),
   ]);
 
-  // A dedicated per-service account wins over a shared "all" account.
-  const resolveConn = (service: "search_console" | "analytics") => {
+  // A dedicated per-service account wins over a shared "all" account. Business
+  // Profile is always its own account (different scope) — no "all" fallback.
+  const resolveConn = (
+    service: "search_console" | "analytics" | "business_profile",
+  ) => {
     const account =
       projectAccounts.find((a) => a.service === service) ??
-      projectAccounts.find((a) => a.service === "all");
+      (service === "business_profile"
+        ? undefined
+        : projectAccounts.find((a) => a.service === "all"));
     return account
       ? {
           email: account.email,
           connectedAt: account.connectedAt.toISOString().slice(0, 10),
-          via: account.service as "all" | "search_console" | "analytics",
+          via: account.service as
+            | "all"
+            | "search_console"
+            | "analytics"
+            | "business_profile",
         }
       : null;
   };
   const gscConn = resolveConn("search_console");
   const ga4Conn = resolveConn("analytics");
+  const gmbConn = resolveConn("business_profile");
   const hasAnyProjectGoogle = projectAccounts.length > 0;
 
   await ensureWorkspaceDefaultTemplate(workspace.id);
@@ -130,6 +140,7 @@ export default async function ProjectSettingsPage({
           projectId={project.id}
           gsc={gscConn}
           ga4={ga4Conn}
+          gmb={gmbConn}
           canManage={canManageTeam}
         />
         {hasAnyProjectGoogle || userGoogleAccount ? (
@@ -138,9 +149,12 @@ export default async function ProjectSettingsPage({
             initial={{
               gscSiteUrl: project.gscSiteUrl,
               ga4PropertyId: project.ga4PropertyId,
+              gmbLocationId: project.gmbLocationId,
             }}
             gscEmail={gscConn?.email ?? null}
             ga4Email={ga4Conn?.email ?? null}
+            gmbEmail={gmbConn?.email ?? null}
+            gmbConnected={!!gmbConn}
           />
         ) : (
           <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">

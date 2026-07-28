@@ -15,7 +15,8 @@ export type CacheType =
   | "ga4_events"
   | "ga4_landing"
   | "ga4_devices"
-  | "ga4_countries";
+  | "ga4_countries"
+  | "gmb_performance";
 
 export function buildCacheKey(
   type: CacheType,

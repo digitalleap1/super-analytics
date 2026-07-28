@@ -27,8 +27,10 @@ type Step = 1 | 2 | 3 | 4;
 type ConnStatus = {
   gsc: GoogleConn;
   ga4: GoogleConn;
+  gmb: GoogleConn;
   gscSiteUrl: string | null;
   ga4PropertyId: string | null;
+  gmbLocationId: string | null;
 };
 
 const COUNTRIES: { code: string; label: string }[] = [
@@ -385,16 +387,17 @@ function WizardConnectStep({ projectId }: { projectId: string }) {
       <div>
         <h2 className="text-xl font-semibold">Connect Google</h2>
         <p className="text-sm text-muted-foreground">
-          Authorise Search Console and Analytics for this client. Connecting
-          opens Google in a new tab — finish there, then come back and this
-          updates automatically. Optional; you can also do it later from
-          Settings.
+          Authorise Search Console, Analytics and Business Profile for this
+          client. Connecting opens Google in a new tab — finish there, then come
+          back and this updates automatically. Optional; you can also do it
+          later from Settings.
         </p>
       </div>
       <ProjectGoogleConnect
         projectId={projectId}
         gsc={status?.gsc ?? null}
         ga4={status?.ga4 ?? null}
+        gmb={status?.gmb ?? null}
         canManage
       />
     </div>
@@ -414,14 +417,17 @@ function WizardDataSourcesStep({ projectId }: { projectId: string }) {
       </div>
       {status ? (
         <DataSourcesForm
-          key={`${status.gscSiteUrl ?? ""}:${status.ga4PropertyId ?? ""}`}
+          key={`${status.gscSiteUrl ?? ""}:${status.ga4PropertyId ?? ""}:${status.gmbLocationId ?? ""}`}
           projectId={projectId}
           initial={{
             gscSiteUrl: status.gscSiteUrl,
             ga4PropertyId: status.ga4PropertyId,
+            gmbLocationId: status.gmbLocationId,
           }}
           gscEmail={status.gsc?.email ?? null}
           ga4Email={status.ga4?.email ?? null}
+          gmbEmail={status.gmb?.email ?? null}
+          gmbConnected={!!status.gmb}
         />
       ) : (
         <div className="flex items-center gap-2 rounded-lg border bg-card p-4 text-sm text-muted-foreground">

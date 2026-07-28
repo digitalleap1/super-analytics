@@ -69,6 +69,9 @@ export default async function ViewSavedReportPage({
         channels={snapshot.channels}
         prevChannels={snapshot.prevChannels ?? null}
         ga4Breakdowns={snapshot.ga4Breakdowns}
+        gmbPerformance={snapshot.gmbPerformance}
+        prevGmb={snapshot.prevGmb}
+        hasGmb={snapshot.hasGmb}
         keywords={snapshot.keywords}
         backlinks={snapshot.backlinks}
         backlinkMonthly={snapshot.backlinkMonthly}
