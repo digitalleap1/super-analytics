@@ -90,14 +90,26 @@ export function RowCurationDialog({
   onSave,
   saving = false,
 }: Props) {
-  const [mode, setMode] = useState<FilterMode>("contains");
-  const [text, setText] = useState("");
-  const matcher = useMatcher(mode, text);
+  // Each tab keeps its own independent filter (mode + text), so a term typed
+  // while on Queries doesn't carry over to Pages or Channels.
+  const emptyFilters = (): Record<CurationTab, { mode: FilterMode; text: string }> => ({
+    queries: { mode: "contains", text: "" },
+    pages: { mode: "contains", text: "" },
+    channels: { mode: "contains", text: "" },
+  });
+  const [filters, setFilters] = useState(emptyFilters);
+  const active = filters[activeTab];
+  const matcher = useMatcher(active.mode, active.text);
 
-  // Clear the filter box each time the dialog opens so a stale regex doesn't
-  // silently narrow the list the next time around.
+  const setActiveMode = (m: FilterMode) =>
+    setFilters((f) => ({ ...f, [activeTab]: { ...f[activeTab], mode: m } }));
+  const setActiveText = (t: string) =>
+    setFilters((f) => ({ ...f, [activeTab]: { ...f[activeTab], text: t } }));
+
+  // Reset every tab's filter each time the dialog opens so a stale regex
+  // doesn't silently narrow a list next time around.
   useEffect(() => {
-    if (open) setText("");
+    if (open) setFilters(emptyFilters());
   }, [open]);
 
   const hidden = useMemo(
@@ -154,7 +166,7 @@ export function RowCurationDialog({
     );
     const matchedKeys = matched.map(keyOf);
     const hiddenCount = allKeys.filter((k) => hidden[kind].has(k)).length;
-    const filtering = text.trim().length > 0;
+    const filtering = active.text.trim().length > 0;
 
     return (
       <div className="space-y-2">
@@ -254,7 +266,10 @@ export function RowCurationDialog({
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={mode} onValueChange={(v) => setMode(v as FilterMode)}>
+          <Select
+            value={active.mode}
+            onValueChange={(v) => setActiveMode(v as FilterMode)}
+          >
             <SelectTrigger className="h-9 w-[170px]">
               <SelectValue />
             </SelectTrigger>
@@ -267,12 +282,12 @@ export function RowCurationDialog({
           <div className="relative min-w-[220px] flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
+              value={active.text}
+              onChange={(e) => setActiveText(e.target.value)}
               placeholder={
-                mode === "regex"
-                  ? "e.g. taxidermy|dead|dying"
-                  : "Type to filter…"
+                active.mode === "regex"
+                  ? `Filter ${activeTab} — e.g. taxidermy|dead|dying`
+                  : `Filter ${activeTab}…`
               }
               className="pl-8"
             />
