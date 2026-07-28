@@ -1,6 +1,7 @@
 import { requireProject } from "@/lib/projects";
 import { prisma } from "@/lib/prisma";
 import { EditableProjectReport } from "@/components/reports/editable-project-report";
+import { normalizeExclusions } from "@/lib/report-exclusions";
 import {
   formatRangeLabel,
   parseRangeFromSearchParams,
@@ -252,6 +253,7 @@ export default async function ProjectPage({
       summary={summary}
       analysisNotes={project.analysisNotes}
       otherTasks={project.otherTasks}
+      initialExclusions={normalizeExclusions(project.reportExclusions)}
       availableTemplates={allTemplates}
       currentTemplateId={project.templateId}
     />

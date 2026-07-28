@@ -111,6 +111,10 @@ model Project {
   ga4PropertyId  String?
   analysisNotes  String?
   otherTasks     String?
+  // Per-project row curation: query/page/channel keys to omit from the report
+  // and every export, so recurring junk / brand / irrelevant rows never reach
+  // clients. Shape: { queries: string[], pages: string[], channels: string[] }.
+  reportExclusions Json?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)

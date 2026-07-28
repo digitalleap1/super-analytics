@@ -71,6 +71,13 @@ import {
 } from "@/lib/backlinks";
 import { BacklinksSection } from "@/components/backlinks/backlinks-section";
 import { SaveReportDialog } from "@/components/reports/save-report-dialog";
+import { RowCurationDialog } from "@/components/reports/row-curation-dialog";
+import {
+  applyExclusions,
+  normalizeExclusions,
+  totalExcluded,
+  type ReportExclusions,
+} from "@/lib/report-exclusions";
 import { QuickShareButton } from "@/components/reports/quick-share-button";
 import { ReportLogoHeader } from "@/components/reports/report-logo-header";
 import { ReportSummaryCard } from "@/components/reports/report-summary-card";
@@ -131,6 +138,9 @@ type Props = {
   // Free-text fields (per-project), shown as toggleable sections.
   analysisNotes?: string | null;
   otherTasks?: string | null;
+  // Persisted per-project row curation (deselected queries/pages/channels).
+  // Absent/read-only in snapshot & share views (already baked into the data).
+  initialExclusions?: ReportExclusions;
   // List of workspace templates so the user can switch from the toolbar
   // without going to project settings.
   availableTemplates?: { id: string; name: string; isDefault: boolean }[];
@@ -218,6 +228,53 @@ export function EditableProjectReport(props: Props) {
 
   const isDirty =
     JSON.stringify(config) !== JSON.stringify(props.initialConfig);
+
+  // Per-project row curation. In snapshot/share mode there's no live editing —
+  // the arrays we were handed are already curated — so this stays inert there.
+  const isLive = props.mode !== "snapshot";
+  const [exclusions, setExclusions] = useState<ReportExclusions>(
+    normalizeExclusions(props.initialExclusions),
+  );
+  const [savingExclusions, startSavingExclusions] = useTransition();
+
+  // Filter the raw rows once, up front. Everything downstream — on-screen
+  // tables, PDF/PPT/PNG/CSV exports, saved snapshots and shared links — reads
+  // these curated arrays, so a deselected row can never leak into any output.
+  const curated = applyExclusions(
+    {
+      queries: props.queries,
+      pages: props.pages,
+      channels: props.channels,
+    },
+    isLive ? exclusions : { queries: [], pages: [], channels: [] },
+  );
+  const vQueries = curated.queries;
+  const vPages = curated.pages;
+  const vChannels = curated.channels;
+
+  function persistExclusions(next: ReportExclusions): Promise<void> {
+    return new Promise((resolve) => {
+      startSavingExclusions(async () => {
+        const res = await fetch(`/api/projects/${props.project.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reportExclusions: next }),
+        });
+        if (!res.ok) {
+          toast.error("Could not save row selections");
+        } else {
+          const n = totalExcluded(next);
+          toast.success(
+            n === 0
+              ? "All rows included"
+              : `Saved — ${n} row${n === 1 ? "" : "s"} hidden from reports`,
+          );
+          router.refresh();
+        }
+        resolve();
+      });
+    });
+  }
 
   function setSection(key: SectionKey, value: boolean) {
     setConfig((c) => ({
@@ -429,11 +486,11 @@ export function EditableProjectReport(props: Props) {
       prevOverview: props.prevOverview,
       ga4Overview: props.ga4Overview,
       prevGa4: props.prevGa4,
-      queries: props.queries,
+      queries: vQueries,
       prevQueries: props.prevQueries ?? null,
-      pages: props.pages,
+      pages: vPages,
       prevPages: props.prevPages ?? null,
-      channels: props.channels,
+      channels: vChannels,
       prevChannels: props.prevChannels ?? null,
       keywords: props.keywords,
       backlinks: props.backlinks,
@@ -519,13 +576,13 @@ export function EditableProjectReport(props: Props) {
                         }))
                       : [],
                   topQueries: cfg.sections.topQueries
-                    ? props.queries.slice(0, limitFor(cfg, "topQueries"))
+                    ? vQueries.slice(0, limitFor(cfg, "topQueries"))
                     : undefined,
                   topPages: cfg.sections.topPages
-                    ? props.pages.slice(0, limitFor(cfg, "topPages"))
+                    ? vPages.slice(0, limitFor(cfg, "topPages"))
                     : undefined,
                   channels: cfg.sections.ga4Channels
-                    ? props.channels.slice(0, limitFor(cfg, "ga4Channels"))
+                    ? vChannels.slice(0, limitFor(cfg, "ga4Channels"))
                     : undefined,
                   keywords: cfg.sections.keywords
                     ? props.keywords.slice(0, limitFor(cfg, "keywords"))
@@ -556,6 +613,15 @@ export function EditableProjectReport(props: Props) {
               />
               {props.mode !== "snapshot" ? (
                 <>
+                  <RowCurationDialog
+                    queries={props.queries}
+                    pages={props.pages}
+                    channels={props.channels}
+                    exclusions={exclusions}
+                    onChange={setExclusions}
+                    onSave={() => persistExclusions(exclusions)}
+                    saving={savingExclusions}
+                  />
                   <QuickShareButton
                     projectId={props.project.id}
                     defaultName={`${props.project.name} — ${props.rangeLabel}`}
@@ -941,19 +1007,19 @@ export function EditableProjectReport(props: Props) {
               rangeLabel={`${props.reportPeriodLabel} · ${props.rangeLabel}`}
               queries={
                 cfg.sections.topQueries
-                  ? props.queries.slice(0, limitFor(cfg, "topQueries"))
+                  ? vQueries.slice(0, limitFor(cfg, "topQueries"))
                   : []
               }
               prevQueries={props.prevQueries}
               pages={
                 cfg.sections.topPages
-                  ? props.pages.slice(0, limitFor(cfg, "topPages"))
+                  ? vPages.slice(0, limitFor(cfg, "topPages"))
                   : []
               }
               prevPages={props.prevPages}
               channels={
                 cfg.sections.ga4Channels
-                  ? props.channels.slice(0, limitFor(cfg, "ga4Channels"))
+                  ? vChannels.slice(0, limitFor(cfg, "ga4Channels"))
                   : []
               }
               prevChannels={props.prevChannels}

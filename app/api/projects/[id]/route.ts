@@ -61,6 +61,9 @@ export async function PATCH(
       ...(parsed.data.otherTasks !== undefined && {
         otherTasks: parsed.data.otherTasks,
       }),
+      ...(parsed.data.reportExclusions != null && {
+        reportExclusions: parsed.data.reportExclusions,
+      }),
     },
   });
 

@@ -27,6 +27,16 @@ export const projectUpdateSchema = projectCreateSchema.partial().extend({
   // Structured tasks are stored as a JSON array, which costs more characters
   // than the old free text — give it headroom.
   otherTasks: z.string().max(30000).optional().nullable(),
+  // Deselected report rows (query/page/channel keys) to hide from the report
+  // and every export. Bounded to keep the JSON column sane.
+  reportExclusions: z
+    .object({
+      queries: z.array(z.string().max(2000)).max(2000).default([]),
+      pages: z.array(z.string().max(2000)).max(2000).default([]),
+      channels: z.array(z.string().max(2000)).max(500).default([]),
+    })
+    .optional()
+    .nullable(),
 });
 
 export type ProjectUpdateInput = z.infer<typeof projectUpdateSchema>;
