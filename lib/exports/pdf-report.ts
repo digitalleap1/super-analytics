@@ -39,6 +39,9 @@ export type ReportPdfData = {
   brandingHeader?: string | null;
   logoUrl?: string | null;
   agencyName?: string | null;
+  // Optional cover overrides. Default to the agency name / today when unset.
+  preparedBy?: string | null;
+  generatedDate?: string | null;
   summaryNarrative?: string | null;
   metrics: ReportMetric[];
   topQueries?: GscQueryRow[];
@@ -315,13 +318,13 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
     cy += 11;
   };
   coverLine("Reporting Period", data.rangeLabel);
-  coverLine("Prepared By", agency);
+  coverLine("Prepared By", data.preparedBy?.trim() || agency);
   const today = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-  coverLine("Generated", today);
+  coverLine("Generated", data.generatedDate?.trim() || today);
 
   // ── CONTENT ────────────────────────────────────────────────────────────
   doc.addPage();
