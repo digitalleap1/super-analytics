@@ -870,13 +870,20 @@ export function EditableProjectReport(props: Props) {
                 label="Avg position"
                 value={formatPosition(props.overview.totals.position)}
                 current={props.overview.totals.position}
-                previous={props.prevOverview?.totals.position}
+                // A position of 0 means "no data", not rank #0 — don't show a
+                // (bogus, inverted) delta when either period lacks a position.
+                previous={
+                  props.overview.totals.position > 0 &&
+                  (props.prevOverview?.totals.position ?? 0) > 0
+                    ? props.prevOverview?.totals.position
+                    : undefined
+                }
                 invertDelta
                 icon={TrendingUp}
                 accent="primary"
               />
               <KpiCard
-                label="Users"
+                label="Total users"
                 value={formatNumber(props.ga4Overview.totals.totalUsers)}
                 current={props.ga4Overview.totals.totalUsers}
                 previous={props.prevGa4?.totals.totalUsers}

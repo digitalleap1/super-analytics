@@ -297,7 +297,16 @@ export function ReportTables({
             {curateButton("queries")}
             <CsvExportButton
               filename={`${projectName}-queries`}
-              rows={queries as unknown as Record<string, unknown>[]}
+              rows={queries.map((r) => ({
+                query: r.query,
+                clicks: r.clicks,
+                impressions: r.impressions,
+                // Match the on-screen/PDF report: CTR as a percent and position
+                // to one decimal — not the raw 0-1 / full-float values, which
+                // read as "0.05%" and noise in a client's spreadsheet.
+                ctr: formatPercent(r.ctr),
+                position: formatPosition(r.position),
+              }))}
               columns={[
                 { key: "query", header: "Query" },
                 { key: "clicks", header: "Clicks" },
@@ -349,7 +358,13 @@ export function ReportTables({
             {curateButton("pages")}
             <CsvExportButton
               filename={`${projectName}-pages`}
-              rows={pages as unknown as Record<string, unknown>[]}
+              rows={pages.map((r) => ({
+                page: r.page,
+                clicks: r.clicks,
+                impressions: r.impressions,
+                ctr: formatPercent(r.ctr),
+                position: formatPosition(r.position),
+              }))}
               columns={[
                 { key: "page", header: "Page" },
                 { key: "clicks", header: "Clicks" },
@@ -401,7 +416,13 @@ export function ReportTables({
             {curateButton("channels")}
             <CsvExportButton
               filename={`${projectName}-channels`}
-              rows={channels as unknown as Record<string, unknown>[]}
+              rows={channels.map((r) => ({
+                channel: r.channel,
+                sessions: r.sessions,
+                totalUsers: r.totalUsers,
+                engagementRate: formatPercent(r.engagementRate),
+                eventCount: r.eventCount,
+              }))}
               columns={[
                 { key: "channel", header: "Channel" },
                 { key: "sessions", header: "Sessions" },

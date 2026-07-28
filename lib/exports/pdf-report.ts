@@ -473,8 +473,17 @@ export async function exportReportToPdf(data: ReportPdfData): Promise<void> {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
       doc.text(m.value, x + 4, y + 15);
+      // Colour by whether the move is good/bad (m.direction is already inverted
+      // for position so "up" = good = green). But point the arrow by the actual
+      // sign of the change value, so we never draw a ▲ next to a "-5.0%" (which
+      // happens for an improved Avg position). Matches the on-screen KPI card.
       const dirColor = m.direction === "up" ? GREEN : m.direction === "down" ? RED : MUTED;
-      arrow(m.direction, x + 4, y + 20, dirColor);
+      const changeDir = m.change.startsWith("+")
+        ? "up"
+        : m.change.startsWith("-")
+          ? "down"
+          : "flat";
+      arrow(changeDir, x + 4, y + 20, dirColor);
       setText(dirColor);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);

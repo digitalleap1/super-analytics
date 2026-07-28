@@ -126,7 +126,7 @@ export function buildReportSummary(opts: {
     );
     bullets.push(
       bullet(
-        "Users",
+        "Total users",
         opts.ga4.totals.totalUsers,
         opts.prevGa4?.totals.totalUsers ?? null,
         "number",
@@ -142,7 +142,7 @@ export function buildReportSummary(opts: {
     Impressions: 3,
     "Average CTR": 2,
     "Average position": 2,
-    Users: 1,
+    "Total users": 1,
   };
   const ranked = [...bullets]
     .filter((b) => b.changePct != null && b.direction !== "flat")
@@ -249,7 +249,7 @@ function buildNarrative(
 
   if (hasGa4) {
     const sessions = byLabel.get("Sessions");
-    const users = byLabel.get("Users");
+    const users = byLabel.get("Total users");
     const ga4parts = [
       phrase("sessions", sessions),
       phrase("users", users),

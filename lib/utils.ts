@@ -25,7 +25,10 @@ export function formatPercent(
 }
 
 export function formatPosition(n: number | null | undefined): string {
-  if (n == null || !Number.isFinite(n)) return "—";
+  // A valid Search Console position is >= 1.0. A 0 only ever comes from a
+  // "no data" fallback (an empty period), so render it as "—" instead of
+  // "0.0", which would read as a rank better than #1.
+  if (n == null || !Number.isFinite(n) || n <= 0) return "—";
   return n.toFixed(1);
 }
 
